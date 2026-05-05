@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const initializeDatabase = require("./schema/init");
+const authRoutes = require("./routes/authRoutes")
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -15,6 +16,8 @@ app.get("/", (req, res) => {
         message: "Job Management System backend is running",
     });
 });
+
+app.use("/api/auth", authRoutes);
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
