@@ -5,6 +5,7 @@ const initializeDatabase = () => {
         db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uid TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         phone_number TEXT NOT NULL,
@@ -18,6 +19,7 @@ const initializeDatabase = () => {
         db.run(`
       CREATE TABLE IF NOT EXISTS jobs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uid TEXT NOT NULL UNIQUE,
         title TEXT NOT NULL,
         description TEXT NOT NULL,
         location TEXT NOT NULL,
@@ -32,6 +34,7 @@ const initializeDatabase = () => {
         db.run(`
       CREATE TABLE IF NOT EXISTS applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uid TEXT NOT NULL UNIQUE,
         job_id INTEGER NOT NULL,
         user_id INTEGER NOT NULL,
         cover_letter TEXT NOT NULL,
