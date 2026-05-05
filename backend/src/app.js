@@ -1,10 +1,13 @@
 const express = require("express")
-const db = require("./config/database")
+const initializeDatabase = require("./schema/init");
+
 
 const app = express();
 const PORT = 5050;
 
 app.use(express.json());
+
+initializeDatabase();
 
 app.get("/", (req, res) => {
     res.json({
