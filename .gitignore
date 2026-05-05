@@ -13,6 +13,11 @@ backend/.env
 frontend/.env
 *.local
 
+# Database files
+*.sqlite
+*.sqlite3
+backend/*.sqlite
+
 # Logs
 logs
 *.log

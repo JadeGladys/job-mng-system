@@ -10,7 +10,8 @@ const initializeDatabase = () => {
         phone_number TEXT NOT NULL,
         password TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('admin', 'user')),
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -23,6 +24,7 @@ const initializeDatabase = () => {
         company TEXT NOT NULL,
         created_by INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (created_by) REFERENCES users(id)
       )
     `);
@@ -39,6 +41,7 @@ const initializeDatabase = () => {
         ai_summary TEXT,
         ai_recommendation TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (job_id) REFERENCES jobs(id),
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
