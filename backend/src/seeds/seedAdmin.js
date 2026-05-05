@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const { randomUUID } = require("crypto");
 const db = require("../config/database");
 const initializeDatabase = require("../schema/init");
 
@@ -25,10 +26,11 @@ const seedAdminUser = async () => {
 
             db.run(
                 `
-        INSERT INTO users (name, email, phone_number, password, role)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO users (uid, name, email, phone_number, password, role)
+        VALUES (?, ?, ?, ?, ?, ?)
         `,
                 [
+                    randomUUID(),
                     "System Admin",
                     adminEmail,
                     "0780000000",

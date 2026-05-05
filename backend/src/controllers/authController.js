@@ -1,4 +1,5 @@
 const bcrypt = require("bcryptjs");
+const { randomUUID } = require("crypto");
 const db = require("../config/database");
 
 const registerUser = async (req, res) => {
@@ -11,6 +12,7 @@ const registerUser = async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
+    const userUid = randomUUID();
 
     db.get(
         "SELECT id FROM users WHERE email = ?",
@@ -34,10 +36,10 @@ const registerUser = async (req, res) => {
 
                 db.run(
                     `
-          INSERT INTO users (name, email, phone_number, password, role)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO users (uid, name, email, phone_number, password, role)
+          VALUES (?, ?, ?, ?, ?, ?)
           `,
-                    [name.trim(), normalizedEmail, phone_number.trim(), hashedPassword, "user"],
+                    [userUid, name.trim(), normalizedEmail, phone_number.trim(), hashedPassword, "user"],
                     function (insertError) {
                         if (insertError) {
                             return res.status(500).json({
@@ -49,7 +51,7 @@ const registerUser = async (req, res) => {
                         return res.status(201).json({
                             message: "User registered successfully.",
                             user: {
-                                id: this.lastID,
+                                uid: userUid,
                                 name: name.trim(),
                                 email: normalizedEmail,
                                 phone_number: phone_number.trim(),
