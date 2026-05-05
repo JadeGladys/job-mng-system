@@ -7,8 +7,10 @@ frontend/node_modules/
 dist/
 dist-ssr/
 
-# Environment files
+# Environment and local config files
 .env
+backend/.env
+frontend/.env
 *.local
 
 # Logs
