@@ -4,9 +4,10 @@
   "description": "Job MNG System backend",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node src/app.js"
   },
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "sqlite3": "^6.0.1"
   }
 }
