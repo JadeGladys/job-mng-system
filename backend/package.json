@@ -4,9 +4,11 @@
   "description": "Job MNG System backend",
   "main": "app.js",
   "scripts": {
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "seed:admin": "node src/seeds/seedAdmin.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "express": "^5.1.0",
     "sqlite3": "^6.0.1"
   }
