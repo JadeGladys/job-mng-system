@@ -1,8 +1,8 @@
 const db = require("../config/database");
 
 const initializeDatabase = () => {
-    db.serialize(() => {
-        db.run(`
+  db.serialize(() => {
+    db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         uid TEXT NOT NULL UNIQUE,
@@ -16,7 +16,7 @@ const initializeDatabase = () => {
       )
     `);
 
-        db.run(`
+    db.run(`
       CREATE TABLE IF NOT EXISTS jobs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         uid TEXT NOT NULL UNIQUE,
@@ -24,6 +24,8 @@ const initializeDatabase = () => {
         description TEXT NOT NULL,
         location TEXT NOT NULL,
         company TEXT NOT NULL,
+        requirements TEXT NOT NULL,
+        deadline DATETIME NOT NULL,
         created_by INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -31,7 +33,8 @@ const initializeDatabase = () => {
       )
     `);
 
-        db.run(`
+
+    db.run(`
       CREATE TABLE IF NOT EXISTS applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         uid TEXT NOT NULL UNIQUE,
@@ -50,8 +53,8 @@ const initializeDatabase = () => {
       )
     `);
 
-        console.log("Database schema initialized.");
-    });
+    console.log("Database schema initialized.");
+  });
 };
 
 module.exports = initializeDatabase;
