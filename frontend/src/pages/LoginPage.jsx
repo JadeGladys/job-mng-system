@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { loginUser } from "../services/authService";
 import AuthShell from "../components/AuthShell";
+import { useNavigate } from "react-router-dom";
 
 function LoginPage({ onSwitchMode }) {
+    const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -33,6 +36,13 @@ function LoginPage({ onSwitchMode }) {
                 email: "",
                 password: "",
             });
+
+            if (data.user.role === "admin") {
+                navigate("/admin");
+            } else {
+                navigate("/dashboard");
+            }
+
         } catch (err) {
             setError(err.message);
         } finally {
