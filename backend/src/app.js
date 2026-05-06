@@ -5,7 +5,6 @@ const cors = require("cors");
 const initializeDatabase = require("./schema/init");
 const authRoutes = require("./routes/authRoutes");
 const jobRoutes = require("./routes/jobRoutes");
-const authorizeRoles = require("./middleware/authorizeRoles");
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -24,15 +23,6 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 
 app.use("/api/jobs", jobRoutes);
-
-/*temporary admin route for testing
-//Authorization
-app.get("/api/admin/test", authenticateToken, authorizeRoles("admin"), (req, res) => {
-    res.status(200).json({
-        message: "Admin access granted.",
-        user: req.user,
-    });
-});*/
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
