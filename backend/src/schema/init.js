@@ -24,6 +24,9 @@ const initializeDatabase = () => {
         description TEXT NOT NULL,
         location TEXT NOT NULL,
         company TEXT NOT NULL,
+        category TEXT NOT NULL,
+        job_type TEXT NOT NULL,
+        work_mode TEXT NOT NULL,
         requirements TEXT NOT NULL,
         deadline DATETIME NOT NULL,
         created_by INTEGER,
@@ -32,6 +35,7 @@ const initializeDatabase = () => {
         FOREIGN KEY (created_by) REFERENCES users(id)
       )
     `);
+
 
 
     db.run(`
