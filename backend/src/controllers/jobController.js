@@ -1,3 +1,4 @@
+const { randomUUID } = require("crypto");
 const db = require("../config/database");
 
 const getAllJobs = (req, res) => {
@@ -69,6 +70,187 @@ const getAllJobs = (req, res) => {
     });
 };
 
+const createJob = (req, res) => {
+    const {
+        title,
+        description,
+        location,
+        company,
+        category,
+        job_type,
+        work_mode,
+        requirements,
+        deadline,
+    } = req.body;
+
+    if (
+        !title ||
+        !description ||
+        !location ||
+        !company ||
+        !category ||
+        !job_type ||
+        !work_mode ||
+        !requirements ||
+        !deadline
+    ) {
+        return res.status(400).json({
+            message: "All job fields are required.",
+        });
+    }
+
+    const jobUid = randomUUID();
+
+    db.run(
+        `
+    INSERT INTO jobs (
+      uid,
+      title,
+      description,
+      location,
+      company,
+      category,
+      job_type,
+      work_mode,
+      requirements,
+      deadline,
+      created_by
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+        [
+            jobUid,
+            title.trim(),
+            description.trim(),
+            location.trim(),
+            company.trim(),
+            category.trim(),
+            job_type.trim(),
+            work_mode.trim(),
+            requirements.trim(),
+            deadline,
+            req.user.id,
+        ],
+        function (error) {
+            if (error) {
+                return res.status(500).json({
+                    message: "Failed to create job.",
+                    error: error.message,
+                });
+            }
+
+            return res.status(201).json({
+                message: "Job created successfully.",
+                job: {
+                    uid: jobUid,
+                    title,
+                    description,
+                    location,
+                    company,
+                    category,
+                    job_type,
+                    work_mode,
+                    requirements,
+                    deadline,
+                },
+            });
+        }
+    );
+};
+
+const updateJob = (req, res) => {
+    const { uid } = req.params;
+
+    const allowedFields = [
+        "title",
+        "description",
+        "location",
+        "company",
+        "category",
+        "job_type",
+        "work_mode",
+        "requirements",
+        "deadline",
+    ];
+
+    const updates = [];
+    const values = [];
+
+    allowedFields.forEach((field) => {
+        if (req.body[field] !== undefined) {
+            updates.push(`${field} = ?`);
+            values.push(
+                typeof req.body[field] === "string" ? req.body[field].trim() : req.body[field]
+            );
+        }
+    });
+
+    if (updates.length === 0) {
+        return res.status(400).json({
+            message: "At least one valid field is required for update.",
+        });
+    }
+
+    updates.push("updated_at = CURRENT_TIMESTAMP");
+    values.push(uid);
+
+    const query = `
+    UPDATE jobs
+    SET ${updates.join(", ")}
+    WHERE uid = ?
+  `;
+
+    db.run(query, values, function (error) {
+        if (error) {
+            return res.status(500).json({
+                message: "Failed to update job.",
+                error: error.message,
+            });
+        }
+
+        if (this.changes === 0) {
+            return res.status(404).json({
+                message: "Job not found.",
+            });
+        }
+
+        return res.status(200).json({
+            message: "Job updated successfully.",
+        });
+    });
+};
+
+
+const deleteJob = (req, res) => {
+    const { uid } = req.params;
+
+    db.run(
+        "DELETE FROM jobs WHERE uid = ?",
+        [uid],
+        function (error) {
+            if (error) {
+                return res.status(500).json({
+                    message: "Failed to delete job.",
+                    error: error.message,
+                });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).json({
+                    message: "Job not found.",
+                });
+            }
+
+            return res.status(200).json({
+                message: "Job deleted successfully.",
+            });
+        }
+    );
+};
+
 module.exports = {
     getAllJobs,
+    createJob,
+    updateJob,
+    deleteJob,
 };
