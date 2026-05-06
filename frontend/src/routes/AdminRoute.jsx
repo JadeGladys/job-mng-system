@@ -5,7 +5,7 @@ function AdminRoute() {
     const storedUser = localStorage.getItem("user");
 
     if (!token || !storedUser) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/auth" replace />;
     }
 
     const user = JSON.parse(storedUser);

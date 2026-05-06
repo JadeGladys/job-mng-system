@@ -6,6 +6,7 @@ import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AdminRoute from "./routes/AdminRoute";
+import HomePage from "./pages/HomePage";
 
 function AuthPageSwitcher() {
   const [authMode, setAuthMode] = useState("login");
@@ -21,7 +22,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<AuthPageSwitcher />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/auth" element={<AuthPageSwitcher />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<UserDashboard />} />
