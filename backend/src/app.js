@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const initializeDatabase = require("./schema/init");
 const authRoutes = require("./routes/authRoutes");
+const jobRoutes = require("./routes/jobRoutes");
 const authorizeRoles = require("./middleware/authorizeRoles");
 
 const app = express();
@@ -21,6 +22,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+
+app.use("/api/jobs", jobRoutes);
 
 /*temporary admin route for testing
 //Authorization
