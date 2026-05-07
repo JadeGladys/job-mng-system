@@ -1,10 +1,12 @@
+import { useSelector } from "react-redux";
+
 function UserDashboard() {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = useSelector((state) => state.auth.user);
 
     return (
         <div>
             <h1>User Dashboard</h1>
-            <p>Welcome, {user.name || "User"}.</p>
+            <p>Welcome, {user?.name || "User"}.</p>
         </div>
     );
 }

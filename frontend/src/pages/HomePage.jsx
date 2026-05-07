@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { fetchJobs } from "../services/jobService";
 
 const workModeOptions = ["Remote", "Hybrid", "Onsite"];
@@ -26,21 +27,9 @@ function HomePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [selectedJob, setSelectedJob] = useState(null);
-    const [signedInUser, setSignedInUser] = useState(null);
 
-    useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-
-        if (!storedUser) {
-            return;
-        }
-
-        try {
-            setSignedInUser(JSON.parse(storedUser));
-        } catch {
-            setSignedInUser(null);
-        }
-    }, []);
+    const signedInUser = useSelector((state) => state.auth.user);
+    const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
     useEffect(() => {
         const loadJobs = async () => {
@@ -106,6 +95,20 @@ function HomePage() {
         setActiveFilters(cleared);
     };
 
+    const getInitials = (name) => {
+        if (!name) {
+            return "U";
+        }
+
+        return name
+            .trim()
+            .split(" ")
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0].toUpperCase())
+            .join("");
+    };
+
     const handleJobSelection = (job) => {
         if (!signedInUser) {
             navigate("/auth");
@@ -127,9 +130,22 @@ function HomePage() {
                 </div>
 
                 <nav className="jobs-nav">
-                    <button type="button" className="jobs-nav-link" onClick={() => navigate("/auth")}>
-                        Sign in
-                    </button>
+                    {isAuthenticated && signedInUser ? (
+                        <button
+                            type="button"
+                            className="jobs-profile-button"
+                            onClick={() =>
+                                navigate(signedInUser.role === "admin" ? "/admin" : "/dashboard")
+                            }
+                        >
+                            <span className="jobs-profile-avatar">{getInitials(signedInUser.name)}</span>
+                            <span className="jobs-profile-name">{signedInUser.name}</span>
+                        </button>
+                    ) : (
+                        <button type="button" className="jobs-nav-link" onClick={() => navigate("/auth")}>
+                            Sign in
+                        </button>
+                    )}
                 </nav>
             </header>
 
@@ -238,9 +254,11 @@ function HomePage() {
                             <h2>Available jobs</h2>
                             <p>{loading ? "Refreshing listings..." : `${jobs.length} roles available right now`}</p>
                         </div>
-                        <button type="button" className="jobs-secondary-button" onClick={() => navigate("/auth")}>
-                            Sign in
-                        </button>
+                        {!isAuthenticated && (
+                            <button type="button" className="jobs-secondary-button" onClick={() => navigate("/auth")}>
+                                Sign in
+                            </button>
+                        )}
                     </div>
 
                     {error ? <p className="jobs-error">{error}</p> : null}

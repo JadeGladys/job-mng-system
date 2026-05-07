@@ -1,17 +1,15 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 function AdminRoute() {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
+    const { isAuthenticated, user } = useSelector((state) => state.auth);
 
-    if (!token || !storedUser) {
+    if (!isAuthenticated || !user) {
         return <Navigate to="/auth" replace />;
     }
 
-    const user = JSON.parse(storedUser);
-
     if (user.role !== "admin") {
-        return <Navigate to="/dashboard" replace />;
+        return <Navigate to="/" replace />;
     }
 
     return <Outlet />;

@@ -1,7 +1,9 @@
-const API_BASE_URL = "http://localhost:5050/api/jobs";
+import { store } from "../app/store";
+
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/jobs`;
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
+  const token = store.getState().auth.token || localStorage.getItem("token");
 
   return {
     "Content-Type": "application/json",

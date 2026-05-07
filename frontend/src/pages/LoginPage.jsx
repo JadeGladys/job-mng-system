@@ -2,9 +2,12 @@ import { useState } from "react";
 import { loginUser } from "../services/authService";
 import AuthShell from "../components/AuthShell";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setCredentials } from "../features/authSlice";
 
 function LoginPage({ onSwitchMode }) {
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const [formData, setFormData] = useState({
         email: "",
@@ -29,20 +32,21 @@ function LoginPage({ onSwitchMode }) {
 
         try {
             const data = await loginUser(formData);
-            localStorage.setItem("token", data.token);
-            localStorage.setItem("user", JSON.stringify(data.user));
+
+            dispatch(
+                setCredentials({
+                    token: data.token,
+                    user: data.user,
+                })
+            );
+
             setMessage(data.message);
             setFormData({
                 email: "",
                 password: "",
             });
 
-            if (data.user.role === "admin") {
-                navigate("/admin");
-            } else {
-                navigate("/dashboard");
-            }
-
+            navigate("/");
         } catch (err) {
             setError(err.message);
         } finally {
