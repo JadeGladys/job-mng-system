@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { createJob, deleteJob, fetchJobs, updateJob } from "../services/jobService";
+import { createJob, deleteJob, updateJob } from "../services/jobService";
 import { logout } from "../features/authSlice";
+import { getJobs } from "../features/jobsSlice";
+
 
 const categoryOptions = ["IT", "Commerce", "Education", "Marketing", "Design"];
 const jobTypeOptions = ["Full-time", "Part-time", "Internship", "Contract"];
@@ -91,35 +93,31 @@ function AdminSectionHeader({ eyebrow, title, description, actionLabel, onAction
 
 function AdminDashboard() {
     const navigate = useNavigate();
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [editingJob, setEditingJob] = useState(null);
     const [activeView, setActiveView] = useState("overview");
     const [formData, setFormData] = useState(emptyForm);
+    const [actionError, setActionError] = useState("");
+
 
     const dispatch = useDispatch();
+
+    const jobs = useSelector((state) => state.jobs.items);
+    const loading = useSelector((state) => state.jobs.loading);
+    const jobsError = useSelector((state) => state.jobs.error);
+    const error = actionError || jobsError;
+
     const currentUser = useSelector((state) => state.auth.user);
 
     const loadJobs = async () => {
-        setLoading(true);
-        setError("");
-
-        try {
-            const data = await fetchJobs();
-            setJobs(data.jobs ?? []);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
+        setActionError("");
+        await dispatch(getJobs());
     };
 
     useEffect(() => {
         loadJobs();
-    }, []);
+    }, [dispatch]);
 
     useEffect(() => {
         if (!successMessage) {
@@ -203,7 +201,7 @@ function AdminDashboard() {
     const handleEdit = (job) => {
         setEditingJob(job);
         setSuccessMessage("");
-        setError("");
+        setActionError("");
         setActiveView("create");
         setFormData({
             title: job.title ?? "",
@@ -235,7 +233,7 @@ function AdminDashboard() {
     const handleSubmit = async (event) => {
         event.preventDefault();
         setSubmitting(true);
-        setError("");
+        setActionError("");
         setSuccessMessage("");
 
         try {
@@ -256,10 +254,10 @@ function AdminDashboard() {
             }
 
             resetForm();
-            await loadJobs();
+            await dispatch(getJobs());
             setActiveView("manage");
         } catch (err) {
-            setError(err.message);
+            setActionError(err.message);
         } finally {
             setSubmitting(false);
         }
@@ -272,7 +270,7 @@ function AdminDashboard() {
             return;
         }
 
-        setError("");
+        setActionError("");
         setSuccessMessage("");
 
         try {
@@ -283,9 +281,9 @@ function AdminDashboard() {
             }
 
             setSuccessMessage("Job deleted successfully.");
-            await loadJobs();
+            await dispatch(getJobs());
         } catch (err) {
-            setError(err.message);
+            setActionError(err.message);
         }
     };
 
