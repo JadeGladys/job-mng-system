@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { fetchJobs } from "../services/jobService";
+import { useDispatch, useSelector } from "react-redux";
+import {
+    clearFilters as clearJobFilters,
+    clearSelectedJob,
+    getJobs,
+    setFilters,
+    setSelectedJob,
+} from "../features/jobsSlice";
+
 
 const workModeOptions = ["Remote", "Hybrid", "Onsite"];
 const jobTypeOptions = ["Full-time", "Part-time", "Internship", "Contract"];
@@ -9,55 +16,34 @@ const categoryOptions = ["IT", "Commerce", "Education", "Marketing", "Design"];
 
 function HomePage() {
     const navigate = useNavigate();
-    const [heroFilters, setHeroFilters] = useState({
-        title: "",
-        location: "",
-        category: "",
-        job_type: "",
-        work_mode: "",
-    });
-    const [activeFilters, setActiveFilters] = useState({
-        title: "",
-        location: "",
-        category: "",
-        job_type: "",
-        work_mode: "",
-    });
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [selectedJob, setSelectedJob] = useState(null);
+    const dispatch = useDispatch();
+    const storedFilters = useSelector((state) => state.jobs.filters);
+    const jobs = useSelector((state) => state.jobs.items);
+    const loading = useSelector((state) => state.jobs.loading);
+    const error = useSelector((state) => state.jobs.error);
+    const selectedJob = useSelector((state) => state.jobs.selectedJob);
+    const [heroFilters, setHeroFilters] = useState(storedFilters);
 
     const signedInUser = useSelector((state) => state.auth.user);
     const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
     useEffect(() => {
-        const loadJobs = async () => {
-            setLoading(true);
-            setError("");
+        dispatch(getJobs(storedFilters));
+    }, [dispatch, storedFilters]);
 
-            try {
-                const data = await fetchJobs(activeFilters);
-                setJobs(data.jobs ?? []);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadJobs();
-    }, [activeFilters]);
+    useEffect(() => {
+        setHeroFilters(storedFilters);
+    }, [storedFilters]);
 
     const highlightedTags = useMemo(() => {
         return [
-            activeFilters.job_type,
-            activeFilters.category,
-            activeFilters.work_mode,
-            activeFilters.location,
-            activeFilters.title ? `${activeFilters.title} roles` : "",
+            storedFilters.job_type,
+            storedFilters.category,
+            storedFilters.work_mode,
+            storedFilters.location,
+            storedFilters.title ? `${storedFilters.title} roles` : "",
         ].filter(Boolean);
-    }, [activeFilters]);
+    }, [storedFilters]);
 
     const handleHeroChange = (event) => {
         const { name, value } = event.target;
@@ -69,8 +55,9 @@ function HomePage() {
 
     const handleSearch = (event) => {
         event.preventDefault();
-        setActiveFilters(heroFilters);
+        dispatch(setFilters(heroFilters));
     };
+
 
     const applySingleFilter = (field, value) => {
         const nextFilters = {
@@ -79,8 +66,9 @@ function HomePage() {
         };
 
         setHeroFilters(nextFilters);
-        setActiveFilters(nextFilters);
+        dispatch(setFilters(nextFilters));
     };
+
 
     const clearFilters = () => {
         const cleared = {
@@ -92,8 +80,10 @@ function HomePage() {
         };
 
         setHeroFilters(cleared);
-        setActiveFilters(cleared);
+        dispatch(clearJobFilters());
+        dispatch(clearSelectedJob());
     };
+
 
     const getInitials = (name) => {
         if (!name) {
@@ -115,8 +105,9 @@ function HomePage() {
             return;
         }
 
-        setSelectedJob(job);
+        dispatch(setSelectedJob(job));
     };
+
 
     return (
         <div className="jobs-page">
@@ -327,7 +318,7 @@ function HomePage() {
             </section>
 
             {signedInUser && selectedJob ? (
-                <div className="job-preview-backdrop" onClick={() => setSelectedJob(null)}>
+                <div className="job-preview-backdrop" onClick={() => dispatch(clearSelectedJob())}>
                     <aside
                         className="job-preview-panel"
                         onClick={(event) => event.stopPropagation()}
@@ -337,7 +328,7 @@ function HomePage() {
                             <button
                                 type="button"
                                 className="job-preview-close"
-                                onClick={() => setSelectedJob(null)}
+                                onClick={() => dispatch(clearSelectedJob())}
                                 aria-label="Close job details"
                             >
                                 ×

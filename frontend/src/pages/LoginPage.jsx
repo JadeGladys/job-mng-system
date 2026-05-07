@@ -45,8 +45,11 @@ function LoginPage({ onSwitchMode }) {
                 email: "",
                 password: "",
             });
-
-            navigate("/");
+            if (data.user.role === "admin") {
+                navigate("/admin");
+            } else {
+                navigate("/");
+            }
         } catch (err) {
             setError(err.message);
         } finally {
