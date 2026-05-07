@@ -33,14 +33,27 @@ If no AI API key is provided, the system can still run using a fallback non-AI m
 ```bash
 git clone <your-repository-url>
 cd job-mng-system
+```
 
 ## Backend
 
-To be completed.
+Install dependencies and start the API:
+
+```bash
+cd backend
+npm install
+npm start
+```
 
 ## Frontend
 
-To be completed.
+Install dependencies and start the Vite app:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## Environment Variables
 
@@ -54,6 +67,41 @@ DATABASE_URL=./job-mng-system.sqlite
 JWT_SECRET=job_mng_system_demo_secret
 AI_API_KEY=
 ```
+
+Create a `.env` file inside the frontend directory based on `.env.example`.
+
+### Frontend Example
+
+```env
+VITE_API_BASE_URL=http://localhost:5050/api
+```
+
+## Docker
+
+The project includes Docker support for both frontend and backend through `docker-compose.yml`.
+
+### Run with Docker
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+- backend on `http://localhost:5050`
+- frontend on `http://localhost:5173`
+
+### Stop Docker Services
+
+```bash
+docker compose down
+```
+
+### Notes
+
+- The backend container mounts the local `backend` folder, so the SQLite database remains available in the project during development.
+- The frontend container runs the Vite development server with host exposure enabled for browser access.
+- If you update environment values, restart the containers so the changes are picked up.
 
 ## Admin Test Credentials
 
