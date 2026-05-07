@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { createJob, deleteJob, fetchJobs, updateJob } from "../services/jobService";
+import { logout } from "../features/authSlice";
 
 const categoryOptions = ["IT", "Commerce", "Education", "Marketing", "Design"];
 const jobTypeOptions = ["Full-time", "Part-time", "Internship", "Contract"];
@@ -95,23 +97,11 @@ function AdminDashboard() {
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [editingJob, setEditingJob] = useState(null);
-    const [currentUser, setCurrentUser] = useState({});
     const [activeView, setActiveView] = useState("overview");
     const [formData, setFormData] = useState(emptyForm);
 
-    useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-
-        if (!storedUser) {
-            return;
-        }
-
-        try {
-            setCurrentUser(JSON.parse(storedUser));
-        } catch {
-            setCurrentUser({});
-        }
-    }, []);
+    const dispatch = useDispatch();
+    const currentUser = useSelector((state) => state.auth.user);
 
     const loadJobs = async () => {
         setLoading(true);
@@ -309,10 +299,10 @@ function AdminDashboard() {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        dispatch(logout());
         navigate("/auth");
     };
+
 
     const renderOverview = () => (
         <>
@@ -378,26 +368,26 @@ function AdminDashboard() {
                         <div className="jobs-empty-state">
                             No jobs yet. The first published role will appear here.
                         </div>
-                        ) : (
-                            <div className="admin-jobs-mini-list">
-                                {recentJobs.map((job) => (
-                                    <button
-                                        key={job.uid}
+                    ) : (
+                        <div className="admin-jobs-mini-list">
+                            {recentJobs.map((job) => (
+                                <button
+                                    key={job.uid}
                                     type="button"
-                                        className="admin-jobs-mini-card"
-                                        onClick={() => handleEdit(job)}
-                                    >
-                                        <div className="admin-jobs-mini-copy">
-                                            <strong>{job.title}</strong>
-                                            <span>
-                                                {job.company} · {job.location}
-                                            </span>
-                                        </div>
-                                        <span className="admin-jobs-mini-pill">{job.job_type}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                                    className="admin-jobs-mini-card"
+                                    onClick={() => handleEdit(job)}
+                                >
+                                    <div className="admin-jobs-mini-copy">
+                                        <strong>{job.title}</strong>
+                                        <span>
+                                            {job.company} · {job.location}
+                                        </span>
+                                    </div>
+                                    <span className="admin-jobs-mini-pill">{job.job_type}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </article>
             </section>
         </>
@@ -715,7 +705,7 @@ function AdminDashboard() {
                 </div>
 
                 <div className="admin-jobs-sidebar-footer">
-                    <span className="admin-jobs-user-chip">{currentUser.name || "Admin"}</span>
+                    <span className="admin-jobs-user-chip">{currentUser?.name || "Admin"}</span>
                     <button
                         type="button"
                         className={`admin-jobs-nav-link ${activeView === "settings" ? "is-active" : ""}`}
