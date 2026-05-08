@@ -6,6 +6,10 @@ type ServiceError = Error & {
     originalError?: Error;
 };
 
+type JobParams = {
+    uid: string;
+};
+
 const getAllJobs = async (req: Request, res: Response) => {
     try {
         const jobs = await jobService.getAllJobs(req.query);
@@ -47,7 +51,7 @@ const createJob = async (req: Request, res: Response) => {
     }
 };
 
-const updateJob = async (req: Request, res: Response) => {
+const updateJob = async (req: Request<JobParams>, res: Response) => {
     try {
         const result = await jobService.updateJob(req.params.uid, req.body);
         return res.status(200).json(result);
@@ -63,7 +67,7 @@ const updateJob = async (req: Request, res: Response) => {
     }
 };
 
-const deleteJob = async (req: Request, res: Response) => {
+const deleteJob = async (req: Request<JobParams>, res: Response) => {
     try {
         const result = await jobService.deleteJob(req.params.uid);
         return res.status(200).json(result);
