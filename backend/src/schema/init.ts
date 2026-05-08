@@ -31,8 +31,10 @@ const initializeDatabase = (): void => {
                 deadline DATETIME NOT NULL,
                 created_by INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_by INTEGER,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (created_by) REFERENCES users(id)
+                FOREIGN KEY (created_by) REFERENCES users(id),
+                FOREIGN KEY (updated_by) REFERENCES users(id)
             )
         `);
 
@@ -41,17 +43,19 @@ const initializeDatabase = (): void => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 uid TEXT NOT NULL UNIQUE,
                 job_id INTEGER NOT NULL,
-                user_id INTEGER NOT NULL,
                 cover_letter TEXT NOT NULL,
                 cv_link TEXT NOT NULL,
                 status TEXT DEFAULT 'pending',
                 ai_score INTEGER,
                 ai_summary TEXT,
                 ai_recommendation TEXT,
+                created_by INTEGER,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_by INTEGER,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (job_id) REFERENCES jobs(id),
-                FOREIGN KEY (user_id) REFERENCES users(id)
+                FOREIGN KEY (created_by) REFERENCES users(id),
+                FOREIGN KEY (updated_by) REFERENCES users(id)
             )
         `);
 
