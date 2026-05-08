@@ -1,8 +1,11 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { RootState } from "../app/store";
 
 function AdminRoute() {
-    const { isAuthenticated, user } = useSelector((state) => state.auth);
+    const { isAuthenticated, user } = useSelector(
+        (state: RootState) => state.auth
+    );
 
     if (!isAuthenticated || !user) {
         return <Navigate to="/auth" replace />;

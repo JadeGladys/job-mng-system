@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { registerUser } from "../services/authService";
+import type { ChangeEvent, FormEvent } from "react";
+import { RegisterUserData, registerUser } from "../services/authService";
 import AuthShell from "../components/AuthShell";
 
-function RegisterPage({ onSwitchMode }) {
-    const [formData, setFormData] = useState({
+type RegisterPageProps = {
+    onSwitchMode: () => void;
+};
+
+function RegisterPage({ onSwitchMode }: RegisterPageProps) {
+    const [formData, setFormData] = useState<RegisterUserData>({
         name: "",
         email: "",
         phone_number: "",
@@ -13,14 +18,14 @@ function RegisterPage({ onSwitchMode }) {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (event) => {
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
         setFormData({
             ...formData,
             [event.target.name]: event.target.value,
         });
     };
 
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setMessage("");
         setError("");
@@ -36,7 +41,7 @@ function RegisterPage({ onSwitchMode }) {
                 password: "",
             });
         } catch (err) {
-            setError(err.message);
+            setError(err instanceof Error ? err.message : "Registration failed.");
         } finally {
             setLoading(false);
         }

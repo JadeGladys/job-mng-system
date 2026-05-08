@@ -1,15 +1,21 @@
 import { useState } from "react";
-import { loginUser } from "../services/authService";
+import type { ChangeEvent, FormEvent } from "react";
+import { LoginCredentials, loginUser } from "../services/authService";
 import AuthShell from "../components/AuthShell";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../features/authSlice";
+import { AppDispatch } from "../app/store";
 
-function LoginPage({ onSwitchMode }) {
+type LoginPageProps = {
+    onSwitchMode: () => void;
+};
+
+function LoginPage({ onSwitchMode }: LoginPageProps) {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<LoginCredentials>({
         email: "",
         password: "",
     });
@@ -17,14 +23,14 @@ function LoginPage({ onSwitchMode }) {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (event) => {
+    const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
         setFormData({
             ...formData,
             [event.target.name]: event.target.value,
         });
     };
 
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setMessage("");
         setError("");
@@ -51,7 +57,7 @@ function LoginPage({ onSwitchMode }) {
                 navigate("/");
             }
         } catch (err) {
-            setError(err.message);
+            setError(err instanceof Error ? err.message : "Login failed.");
         } finally {
             setLoading(false);
         }

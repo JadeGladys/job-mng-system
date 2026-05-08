@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
     clearFilters as clearJobFilters,
     clearSelectedJob,
     getJobs,
+    Job,
+    JobFilters,
     setFilters,
     setSelectedJob,
 } from "../features/jobsSlice";
-
+import { AppDispatch, RootState } from "../app/store";
 
 const workModeOptions = ["Remote", "Hybrid", "Onsite"];
 const jobTypeOptions = ["Full-time", "Part-time", "Internship", "Contract"];
@@ -16,16 +18,16 @@ const categoryOptions = ["IT", "Commerce", "Education", "Marketing", "Design"];
 
 function HomePage() {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
-    const storedFilters = useSelector((state) => state.jobs.filters);
-    const jobs = useSelector((state) => state.jobs.items);
-    const loading = useSelector((state) => state.jobs.loading);
-    const error = useSelector((state) => state.jobs.error);
-    const selectedJob = useSelector((state) => state.jobs.selectedJob);
-    const [heroFilters, setHeroFilters] = useState(storedFilters);
+    const dispatch = useDispatch<AppDispatch>();
+    const storedFilters = useSelector((state: RootState) => state.jobs.filters);
+    const jobs = useSelector((state: RootState) => state.jobs.items);
+    const loading = useSelector((state: RootState) => state.jobs.loading);
+    const error = useSelector((state: RootState) => state.jobs.error);
+    const selectedJob = useSelector((state: RootState) => state.jobs.selectedJob);
+    const [heroFilters, setHeroFilters] = useState<JobFilters>(storedFilters);
 
-    const signedInUser = useSelector((state) => state.auth.user);
-    const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+    const signedInUser = useSelector((state: RootState) => state.auth.user);
+    const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
     useEffect(() => {
         dispatch(getJobs(storedFilters));
@@ -45,21 +47,23 @@ function HomePage() {
         ].filter(Boolean);
     }, [storedFilters]);
 
-    const handleHeroChange = (event) => {
+    const handleHeroChange = (
+        event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) => {
         const { name, value } = event.target;
         setHeroFilters((current) => ({
             ...current,
-            [name]: value,
+            [name as keyof JobFilters]: value,
         }));
     };
 
-    const handleSearch = (event) => {
+    const handleSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         dispatch(setFilters(heroFilters));
     };
 
 
-    const applySingleFilter = (field, value) => {
+    const applySingleFilter = (field: keyof JobFilters, value: string) => {
         const nextFilters = {
             ...heroFilters,
             [field]: heroFilters[field] === value ? "" : value,
@@ -85,7 +89,7 @@ function HomePage() {
     };
 
 
-    const getInitials = (name) => {
+    const getInitials = (name?: string) => {
         if (!name) {
             return "U";
         }
@@ -99,7 +103,7 @@ function HomePage() {
             .join("");
     };
 
-    const handleJobSelection = (job) => {
+    const handleJobSelection = (job: Job) => {
         if (!signedInUser) {
             navigate("/auth");
             return;
@@ -267,7 +271,7 @@ function HomePage() {
                                     key={job.uid}
                                     className={`job-card ${signedInUser ? "job-card-clickable" : ""}`}
                                     onClick={() => handleJobSelection(job)}
-                                    onKeyDown={(event) => {
+                                    onKeyDown={(event: KeyboardEvent<HTMLElement>) => {
                                         if (event.key === "Enter" || event.key === " ") {
                                             event.preventDefault();
                                             handleJobSelection(job);

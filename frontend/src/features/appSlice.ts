@@ -1,6 +1,10 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = {
+type AppState = {
+    initialized: boolean;
+};
+
+const initialState: AppState = {
     initialized: true,
 };
 

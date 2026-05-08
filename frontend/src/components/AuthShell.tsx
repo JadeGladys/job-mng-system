@@ -1,4 +1,17 @@
 import illustration from "../assets/auth-illustration.png";
+import { ReactNode } from "react";
+
+type AuthShellProps = {
+  eyebrow: string;
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  message: string;
+  error: string;
+  footerText: string;
+  footerActionLabel: string;
+  onFooterAction: () => void;
+};
 
 function AuthShell({
   eyebrow,
@@ -10,7 +23,7 @@ function AuthShell({
   footerText,
   footerActionLabel,
   onFooterAction,
-}) {
+}: AuthShellProps) {
   return (
     <div className="auth-page">
       <section className="auth-panel auth-panel-form">

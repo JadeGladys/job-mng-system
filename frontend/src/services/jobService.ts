@@ -1,8 +1,27 @@
 import apiClient, { getApiErrorMessage } from "./apiClient";
+import { Job, JobFilters } from "../features/jobsSlice";
 
-export const fetchJobs = async (filters = {}) => {
+export type JobPayload = Omit<Job, "uid" | "created_at" | "updated_at">;
+
+export type FetchJobsResponse = {
+  message: string;
+  jobs: Job[];
+};
+
+export type JobMutationResponse = {
+  message: string;
+};
+
+export type CreateJobResponse = {
+  message: string;
+  job: Job;
+};
+
+export const fetchJobs = async (
+  filters: Partial<JobFilters> = {}
+): Promise<FetchJobsResponse> => {
   try {
-    const response = await apiClient.get("/jobs", {
+    const response = await apiClient.get<FetchJobsResponse>("/jobs", {
       params: filters,
     });
 
@@ -12,27 +31,39 @@ export const fetchJobs = async (filters = {}) => {
   }
 };
 
-export const createJob = async (jobData) => {
+export const createJob = async (
+  jobData: JobPayload
+): Promise<CreateJobResponse> => {
   try {
-    const response = await apiClient.post("/jobs", jobData);
+    const response = await apiClient.post<CreateJobResponse>("/jobs", jobData);
     return response.data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error, "Failed to create job."));
   }
 };
 
-export const updateJob = async (jobUid, jobData) => {
+export const updateJob = async (
+  jobUid: string,
+  jobData: Partial<JobPayload>
+): Promise<JobMutationResponse> => {
   try {
-    const response = await apiClient.patch(`/jobs/${jobUid}`, jobData);
+    const response = await apiClient.patch<JobMutationResponse>(
+      `/jobs/${jobUid}`,
+      jobData
+    );
     return response.data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error, "Failed to update job."));
   }
 };
 
-export const deleteJob = async (jobUid) => {
+export const deleteJob = async (
+  jobUid: string
+): Promise<JobMutationResponse> => {
   try {
-    const response = await apiClient.delete(`/jobs/${jobUid}`);
+    const response = await apiClient.delete<JobMutationResponse>(
+      `/jobs/${jobUid}`
+    );
     return response.data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error, "Failed to delete job."));

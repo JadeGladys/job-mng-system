@@ -1,16 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, ReactElement, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { createJob, deleteJob, updateJob } from "../services/jobService";
+import {
+    createJob,
+    deleteJob,
+    JobPayload,
+    updateJob,
+} from "../services/jobService";
 import { logout } from "../features/authSlice";
-import { getJobs } from "../features/jobsSlice";
-
+import { getJobs, Job } from "../features/jobsSlice";
+import { AppDispatch, RootState } from "../app/store";
 
 const categoryOptions = ["IT", "Commerce", "Education", "Marketing", "Design"];
 const jobTypeOptions = ["Full-time", "Part-time", "Internship", "Contract"];
 const workModeOptions = ["Remote", "Hybrid", "Onsite"];
 
-const emptyForm = {
+type AdminView = "overview" | "create" | "manage" | "settings";
+
+type SectionConfig = Record<
+    AdminView,
+    {
+        label: string;
+        eyebrow: string;
+        actionLabel: string;
+    }
+>;
+
+type AdminSectionHeaderProps = {
+    eyebrow: string;
+    actionLabel: string;
+    onAction: () => void;
+};
+
+const emptyForm: JobPayload = {
     title: "",
     description: "",
     location: "",
@@ -22,42 +44,30 @@ const emptyForm = {
     deadline: "",
 };
 
-const sectionConfig = {
+const sectionConfig: SectionConfig = {
     overview: {
         label: "Overview",
         eyebrow: "Admin dashboard",
-        title: "Monitor the hiring workspace at a glance.",
-        description:
-            "Track live roles, watch what is coming next, and keep the admin area ready for applications and AI review when those modules arrive.",
         actionLabel: "Refresh jobs",
     },
     create: {
         label: "Create job post",
         eyebrow: "Job publishing",
-        title: "Create and refine job posts from one focused workspace.",
-        description:
-            "Publish new openings or patch an existing role without leaving the dashboard shell.",
         actionLabel: "Clear form",
     },
     manage: {
         label: "Managed listings",
         eyebrow: "Inventory view",
-        title: "Review every live role in a clean management table.",
-        description:
-            "Edit, retire, and audit published jobs with one consistent admin view.",
         actionLabel: "Refresh jobs",
     },
     settings: {
         label: "Settings",
         eyebrow: "Workspace settings",
-        title: "Prepare the admin console for future hiring workflows.",
-        description:
-            "This section holds configuration placeholders for notifications, application handling, and AI review defaults.",
         actionLabel: "Refresh jobs",
     },
 };
 
-const formatDate = (value) => {
+const formatDate = (value?: string) => {
     if (!value) {
         return "No date";
     }
@@ -75,7 +85,11 @@ const formatDate = (value) => {
     });
 };
 
-function AdminSectionHeader({ eyebrow, title, description, actionLabel, onAction }) {
+function AdminSectionHeader({
+    eyebrow,
+    actionLabel,
+    onAction,
+}: AdminSectionHeaderProps): ReactElement {
     return (
         <header className="admin-jobs-header">
             <div className="admin-jobs-header-intro">
@@ -95,24 +109,24 @@ function AdminDashboard() {
     const navigate = useNavigate();
     const [submitting, setSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
-    const [editingJob, setEditingJob] = useState(null);
-    const [activeView, setActiveView] = useState("overview");
-    const [formData, setFormData] = useState(emptyForm);
+    const [editingJob, setEditingJob] = useState<Job | null>(null);
+    const [activeView, setActiveView] = useState<AdminView>("overview");
+    const [formData, setFormData] = useState<JobPayload>(emptyForm);
     const [actionError, setActionError] = useState("");
 
 
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
 
-    const jobs = useSelector((state) => state.jobs.items);
-    const loading = useSelector((state) => state.jobs.loading);
-    const jobsError = useSelector((state) => state.jobs.error);
+    const jobs = useSelector((state: RootState) => state.jobs.items);
+    const loading = useSelector((state: RootState) => state.jobs.loading);
+    const jobsError = useSelector((state: RootState) => state.jobs.error);
     const error = actionError || jobsError;
 
-    const currentUser = useSelector((state) => state.auth.user);
+    const currentUser = useSelector((state: RootState) => state.auth.user);
 
     const loadJobs = async () => {
         setActionError("");
-        await dispatch(getJobs());
+        await dispatch(getJobs({}));
     };
 
     useEffect(() => {
@@ -184,12 +198,14 @@ function AdminDashboard() {
 
     const currentSection = sectionConfig[activeView];
 
-    const handleChange = (event) => {
+    const handleChange = (
+        event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
         const { name, value } = event.target;
 
         setFormData((current) => ({
             ...current,
-            [name]: value,
+            [name as keyof JobPayload]: value,
         }));
     };
 
@@ -198,7 +214,7 @@ function AdminDashboard() {
         setFormData(emptyForm);
     };
 
-    const handleEdit = (job) => {
+    const handleEdit = (job: Job) => {
         setEditingJob(job);
         setSuccessMessage("");
         setActionError("");
@@ -216,21 +232,26 @@ function AdminDashboard() {
         });
     };
 
-    const buildUpdatePayload = () => {
+    const buildUpdatePayload = (): Partial<JobPayload> => {
         if (!editingJob) {
             return formData;
         }
 
-        return Object.entries(formData).reduce((payload, [key, value]) => {
-            if ((editingJob[key] ?? "") !== value) {
-                payload[key] = value;
-            }
+        return Object.entries(formData).reduce<Partial<JobPayload>>(
+            (payload, [key, value]) => {
+                const typedKey = key as keyof JobPayload;
 
-            return payload;
-        }, {});
+                if ((editingJob[typedKey] ?? "") !== value) {
+                    payload[typedKey] = value;
+                }
+
+                return payload;
+            },
+            {}
+        );
     };
 
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setSubmitting(true);
         setActionError("");
@@ -254,16 +275,16 @@ function AdminDashboard() {
             }
 
             resetForm();
-            await dispatch(getJobs());
+            await dispatch(getJobs({}));
             setActiveView("manage");
         } catch (err) {
-            setActionError(err.message);
+            setActionError(err instanceof Error ? err.message : "Failed to save job.");
         } finally {
             setSubmitting(false);
         }
     };
 
-    const handleDelete = async (job) => {
+    const handleDelete = async (job: Job) => {
         const confirmed = window.confirm(`Delete "${job.title}" from ${job.company}?`);
 
         if (!confirmed) {
@@ -281,9 +302,9 @@ function AdminDashboard() {
             }
 
             setSuccessMessage("Job deleted successfully.");
-            await dispatch(getJobs());
+            await dispatch(getJobs({}));
         } catch (err) {
-            setActionError(err.message);
+            setActionError(err instanceof Error ? err.message : "Failed to delete job.");
         }
     };
 
@@ -302,7 +323,7 @@ function AdminDashboard() {
     };
 
 
-    const renderOverview = () => (
+    const renderOverview = (): ReactElement => (
         <>
             <section className="admin-jobs-stats-grid">
                 {stats.map((item) => (
@@ -391,7 +412,7 @@ function AdminDashboard() {
         </>
     );
 
-    const renderCreateView = () => (
+    const renderCreateView = (): ReactElement => (
         <section className="admin-jobs-single-panel">
             <article className="admin-jobs-form-card">
                 <div className="admin-jobs-section-header">
@@ -500,7 +521,7 @@ function AdminDashboard() {
                                 value={formData.description}
                                 onChange={handleChange}
                                 placeholder="Describe what the role covers and who the team is looking for."
-                                rows="5"
+                                rows={5}
                                 required
                             />
                         </label>
@@ -512,7 +533,7 @@ function AdminDashboard() {
                                 value={formData.requirements}
                                 onChange={handleChange}
                                 placeholder="List the experience, tools, and soft skills expected from applicants."
-                                rows="5"
+                                rows={5}
                                 required
                             />
                         </label>
@@ -537,7 +558,7 @@ function AdminDashboard() {
         </section>
     );
 
-    const renderManageView = () => (
+    const renderManageView = (): ReactElement => (
         <section className="admin-jobs-single-panel">
             <article className="admin-jobs-table-card">
                 <div className="admin-jobs-section-header">
@@ -613,7 +634,7 @@ function AdminDashboard() {
         </section>
     );
 
-    const renderSettingsView = () => (
+    const renderSettingsView = (): ReactElement => (
         <section className="admin-jobs-settings-grid">
             <article className="admin-jobs-overview-card">
                 <div className="admin-jobs-section-header">
@@ -669,11 +690,12 @@ function AdminDashboard() {
         </section>
     );
 
-    const menuItems = [
+    const menuItems: { key: AdminView; label: string }[] = [
         { key: "overview", label: "Dashboard" },
         { key: "create", label: "Create job post" },
         { key: "manage", label: "Managed listings" },
     ];
+
 
     return (
         <div className="admin-jobs-page">
@@ -720,8 +742,6 @@ function AdminDashboard() {
             <main className="admin-jobs-main">
                 <AdminSectionHeader
                     eyebrow={currentSection.eyebrow}
-                    title={currentSection.title}
-                    description={currentSection.description}
                     actionLabel={currentSection.actionLabel}
                     onAction={handleHeaderAction}
                 />

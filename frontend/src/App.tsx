@@ -8,8 +8,10 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import AdminRoute from "./routes/AdminRoute";
 import HomePage from "./pages/HomePage";
 
+type AuthMode = "login" | "register";
+
 function AuthPageSwitcher() {
-  const [authMode, setAuthMode] = useState("login");
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
 
   return authMode === "login" ? (
     <LoginPage onSwitchMode={() => setAuthMode("register")} />

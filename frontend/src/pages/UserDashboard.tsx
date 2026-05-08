@@ -1,7 +1,8 @@
 import { useSelector } from "react-redux";
+import { RootState } from "../app/store";
 
 function UserDashboard() {
-    const user = useSelector((state) => state.auth.user);
+    const user = useSelector((state: RootState) => state.auth.user);
 
     return (
         <div>
