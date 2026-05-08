@@ -1,10 +1,69 @@
-const bcrypt = require("bcryptjs");
-const { randomUUID } = require("crypto");
-const jwt = require("jsonwebtoken");
-const db = require("../config/database");
+import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
+import jwt from "jsonwebtoken";
+import db from "../config/database";
 
-const createServiceError = (message, status, originalError) => {
-    const error = new Error(message);
+type ServiceError = Error & {
+    status?: number;
+    originalError?: Error;
+};
+
+type ServiceUser = {
+    uid: string;
+    name: string;
+    email: string;
+    phone_number: string;
+    role: string;
+};
+
+type RegisterUserInput = {
+    name: string;
+    email: string;
+    phone_number: string;
+    password: string;
+};
+
+type LoginUserInput = {
+    email: string;
+    password: string;
+};
+
+type ExistingUserRow = {
+    id: number;
+};
+
+type DatabaseUserRow = {
+    id: number;
+    uid: string;
+    name: string;
+    email: string;
+    phone_number: string;
+    password: string;
+    role: string;
+};
+
+type RegisterUserResult = {
+    message: string;
+    user: ServiceUser;
+};
+
+type LoginUserResult = {
+    message: string;
+    token: string;
+    user: ServiceUser;
+};
+
+type DbRunResult = {
+    lastID: number;
+    changes: number;
+};
+
+const createServiceError = (
+    message: string,
+    status: number,
+    originalError?: Error
+): ServiceError => {
+    const error = new Error(message) as ServiceError;
     error.status = status;
 
     if (originalError) {
@@ -14,9 +73,9 @@ const createServiceError = (message, status, originalError) => {
     return error;
 };
 
-const dbGet = (query, params = []) =>
+const dbGet = <T>(query: string, params: unknown[] = []): Promise<T | undefined> =>
     new Promise((resolve, reject) => {
-        db.get(query, params, (error, row) => {
+        db.get(query, params, (error: Error | null, row: T | undefined) => {
             if (error) {
                 reject(error);
                 return;
@@ -26,9 +85,9 @@ const dbGet = (query, params = []) =>
         });
     });
 
-const dbRun = (query, params = []) =>
+const dbRun = (query: string, params: unknown[] = []): Promise<DbRunResult> =>
     new Promise((resolve, reject) => {
-        db.run(query, params, function onRun(error) {
+        db.run(query, params, function onRun(this: DbRunResult, error: Error | null) {
             if (error) {
                 reject(error);
                 return;
@@ -41,7 +100,12 @@ const dbRun = (query, params = []) =>
         });
     });
 
-const registerUser = async ({ name, email, phone_number, password }) => {
+const registerUser = async ({
+    name,
+    email,
+    phone_number,
+    password,
+}: RegisterUserInput): Promise<RegisterUserResult> => {
     if (!name || !email || !phone_number || !password) {
         throw createServiceError("Name, email, phone number, and password are required.", 400);
     }
@@ -51,24 +115,27 @@ const registerUser = async ({ name, email, phone_number, password }) => {
     const trimmedPhoneNumber = phone_number.trim();
     const userUid = randomUUID();
 
-    let existingUser;
+    let existingUser: ExistingUserRow | undefined;
 
     try {
-        existingUser = await dbGet("SELECT id FROM users WHERE email = ?", [normalizedEmail]);
+        existingUser = await dbGet<ExistingUserRow>(
+            "SELECT id FROM users WHERE email = ?",
+            [normalizedEmail]
+        );
     } catch (error) {
-        throw createServiceError("Failed to check existing user.", 500, error);
+        throw createServiceError("Failed to check existing user.", 500, error as Error);
     }
 
     if (existingUser) {
         throw createServiceError("A user with this email already exists.", 409);
     }
 
-    let hashedPassword;
+    let hashedPassword: string;
 
     try {
         hashedPassword = await bcrypt.hash(password, 10);
     } catch (error) {
-        throw createServiceError("Failed to hash password.", 500, error);
+        throw createServiceError("Failed to hash password.", 500, error as Error);
     }
 
     try {
@@ -80,7 +147,7 @@ const registerUser = async ({ name, email, phone_number, password }) => {
             [userUid, trimmedName, normalizedEmail, trimmedPhoneNumber, hashedPassword, "user"]
         );
     } catch (error) {
-        throw createServiceError("Failed to register user.", 500, error);
+        throw createServiceError("Failed to register user.", 500, error as Error);
     }
 
     return {
@@ -95,35 +162,44 @@ const registerUser = async ({ name, email, phone_number, password }) => {
     };
 };
 
-const loginUser = async ({ email, password }) => {
+const loginUser = async ({
+    email,
+    password,
+}: LoginUserInput): Promise<LoginUserResult> => {
     if (!email || !password) {
         throw createServiceError("Email and password are required.", 400);
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    let user;
+    let user: DatabaseUserRow | undefined;
 
     try {
-        user = await dbGet("SELECT * FROM users WHERE email = ?", [normalizedEmail]);
+        user = await dbGet<DatabaseUserRow>("SELECT * FROM users WHERE email = ?", [normalizedEmail]);
     } catch (error) {
-        throw createServiceError("Failed to log in user.", 500, error);
+        throw createServiceError("Failed to log in user.", 500, error as Error);
     }
 
     if (!user) {
         throw createServiceError("Invalid email or password.", 401);
     }
 
-    let isPasswordValid;
+    let isPasswordValid: boolean;
 
     try {
         isPasswordValid = await bcrypt.compare(password, user.password);
     } catch (error) {
-        throw createServiceError("Failed to verify credentials.", 500, error);
+        throw createServiceError("Failed to verify credentials.", 500, error as Error);
     }
 
     if (!isPasswordValid) {
         throw createServiceError("Invalid email or password.", 401);
+    }
+
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!jwtSecret) {
+        throw new Error("JWT_SECRET is not defined.");
     }
 
     const token = jwt.sign(
@@ -133,7 +209,7 @@ const loginUser = async ({ email, password }) => {
             email: user.email,
             role: user.role,
         },
-        process.env.JWT_SECRET,
+        jwtSecret,
         { expiresIn: "1d" }
     );
 
@@ -150,7 +226,7 @@ const loginUser = async ({ email, password }) => {
     };
 };
 
-module.exports = {
+export default {
     registerUser,
     loginUser,
 };

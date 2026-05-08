@@ -1,9 +1,13 @@
-const bcrypt = require("bcryptjs");
-const { randomUUID } = require("crypto");
-const db = require("../config/database");
-const initializeDatabase = require("../schema/init");
+import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
+import db from "../config/database";
+import initializeDatabase from "../schema/init";
 
-const seedAdminUser = async () => {
+type ExistingAdminRow = {
+    id: number;
+};
+
+const seedAdminUser = async (): Promise<void> => {
     initializeDatabase();
 
     const adminEmail = "admin@jobmng.local";
@@ -13,7 +17,7 @@ const seedAdminUser = async () => {
     db.get(
         "SELECT id FROM users WHERE email = ?",
         [adminEmail],
-        (selectError, row) => {
+        (selectError: Error | null, row: ExistingAdminRow | undefined) => {
             if (selectError) {
                 console.error("Failed to check existing admin user:", selectError.message);
                 return;
@@ -26,9 +30,9 @@ const seedAdminUser = async () => {
 
             db.run(
                 `
-        INSERT INTO users (uid, name, email, phone_number, password, role)
-        VALUES (?, ?, ?, ?, ?, ?)
-        `,
+                INSERT INTO users (uid, name, email, phone_number, password, role)
+                VALUES (?, ?, ?, ?, ?, ?)
+                `,
                 [
                     randomUUID(),
                     "System Admin",
@@ -37,7 +41,7 @@ const seedAdminUser = async () => {
                     hashedPassword,
                     "admin",
                 ],
-                (insertError) => {
+                (insertError: Error | null) => {
                     if (insertError) {
                         console.error("Failed to seed default admin user:", insertError.message);
                     } else {
@@ -51,4 +55,4 @@ const seedAdminUser = async () => {
     );
 };
 
-seedAdminUser();
+void seedAdminUser();

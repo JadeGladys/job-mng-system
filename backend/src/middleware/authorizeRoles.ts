@@ -1,5 +1,7 @@
-const authorizeRoles = (...allowedRoles) => {
-    return (req, res, next) => {
+import { NextFunction, Request, Response } from "express";
+
+const authorizeRoles = (...allowedRoles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
         if (!req.user) {
             return res.status(401).json({
                 message: "Unauthorized. User information is missing.",
@@ -16,4 +18,4 @@ const authorizeRoles = (...allowedRoles) => {
     };
 };
 
-module.exports = authorizeRoles;
+export default authorizeRoles;

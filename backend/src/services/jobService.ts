@@ -1,7 +1,61 @@
-const { randomUUID } = require("crypto");
-const db = require("../config/database");
+import type { Request } from "express";
+import { randomUUID } from "crypto";
+import db from "../config/database";
 
-const REQUIRED_JOB_FIELDS = [
+type ServiceError = Error & {
+    status?: number;
+    originalError?: Error;
+};
+
+type AuthenticatedUser = NonNullable<Request["user"]>;
+
+export type JobFilters = {
+    title?: string;
+    location?: string;
+    category?: string;
+    job_type?: string;
+    work_mode?: string;
+};
+
+export type JobInput = {
+    title: string;
+    description: string;
+    location: string;
+    company: string;
+    category: string;
+    job_type: string;
+    work_mode: string;
+    requirements: string;
+    deadline: string;
+};
+
+type JobRecord = JobInput & {
+    uid: string;
+    created_at?: string;
+    updated_at?: string;
+};
+
+type JobsListResult = JobRecord[];
+
+type CreateJobResult = {
+    message: string;
+    job: JobRecord;
+};
+
+type UpdateJobResult = {
+    message: string;
+};
+
+type DeleteJobResult = {
+    message: string;
+};
+
+type DbRunResult = {
+    lastID: number;
+    changes: number;
+};
+
+const REQUIRED_JOB_FIELDS: (keyof JobInput)[] = [
     "title",
     "description",
     "location",
@@ -13,10 +67,14 @@ const REQUIRED_JOB_FIELDS = [
     "deadline",
 ];
 
-const UPDATABLE_JOB_FIELDS = [...REQUIRED_JOB_FIELDS];
+const UPDATABLE_JOB_FIELDS: (keyof JobInput)[] = [...REQUIRED_JOB_FIELDS];
 
-const createServiceError = (message, status, originalError) => {
-    const error = new Error(message);
+const createServiceError = (
+    message: string,
+    status: number,
+    originalError?: Error
+): ServiceError => {
+    const error = new Error(message) as ServiceError;
     error.status = status;
 
     if (originalError) {
@@ -26,9 +84,9 @@ const createServiceError = (message, status, originalError) => {
     return error;
 };
 
-const dbAll = (query, params = []) =>
+const dbAll = <T>(query: string, params: unknown[] = []): Promise<T[]> =>
     new Promise((resolve, reject) => {
-        db.all(query, params, (error, rows) => {
+        db.all(query, params, (error: Error | null, rows: T[]) => {
             if (error) {
                 reject(error);
                 return;
@@ -38,9 +96,9 @@ const dbAll = (query, params = []) =>
         });
     });
 
-const dbRun = (query, params = []) =>
+const dbRun = (query: string, params: unknown[] = []): Promise<DbRunResult> =>
     new Promise((resolve, reject) => {
-        db.run(query, params, function onRun(error) {
+        db.run(query, params, function onRun(this: DbRunResult, error: Error | null) {
             if (error) {
                 reject(error);
                 return;
@@ -53,7 +111,7 @@ const dbRun = (query, params = []) =>
         });
     });
 
-const getAllJobs = async (filters = {}) => {
+const getAllJobs = async (filters: JobFilters = {}): Promise<JobsListResult> => {
     const { title, location, category, job_type, work_mode } = filters;
 
     let query = `
@@ -73,8 +131,8 @@ const getAllJobs = async (filters = {}) => {
         FROM jobs
     `;
 
-    const conditions = [];
-    const params = [];
+    const conditions: string[] = [];
+    const params: string[] = [];
 
     if (title) {
         conditions.push("title LIKE ?");
@@ -108,13 +166,16 @@ const getAllJobs = async (filters = {}) => {
     query += " ORDER BY created_at DESC";
 
     try {
-        return await dbAll(query, params);
+        return await dbAll<JobRecord>(query, params);
     } catch (error) {
-        throw createServiceError("Failed to fetch jobs.", 500, error);
+        throw createServiceError("Failed to fetch jobs.", 500, error as Error);
     }
 };
 
-const createJob = async (jobData, currentUser) => {
+const createJob = async (
+    jobData: JobInput,
+    currentUser: AuthenticatedUser
+): Promise<CreateJobResult> => {
     const missingField = REQUIRED_JOB_FIELDS.find((field) => !jobData[field]);
 
     if (missingField) {
@@ -122,7 +183,7 @@ const createJob = async (jobData, currentUser) => {
     }
 
     const jobUid = randomUUID();
-    const trimmedJobData = {
+    const trimmedJobData: JobInput = {
         title: jobData.title.trim(),
         description: jobData.description.trim(),
         location: jobData.location.trim(),
@@ -167,7 +228,7 @@ const createJob = async (jobData, currentUser) => {
             ]
         );
     } catch (error) {
-        throw createServiceError("Failed to create job.", 500, error);
+        throw createServiceError("Failed to create job.", 500, error as Error);
     }
 
     return {
@@ -179,14 +240,21 @@ const createJob = async (jobData, currentUser) => {
     };
 };
 
-const updateJob = async (uid, jobData) => {
-    const updates = [];
-    const values = [];
+const updateJob = async (
+    uid: string,
+    jobData: Partial<JobInput>
+): Promise<UpdateJobResult> => {
+    const updates: string[] = [];
+    const values: string[] = [];
 
     UPDATABLE_JOB_FIELDS.forEach((field) => {
         if (jobData[field] !== undefined) {
             updates.push(`${field} = ?`);
-            values.push(typeof jobData[field] === "string" ? jobData[field].trim() : jobData[field]);
+            values.push(
+                typeof jobData[field] === "string"
+                    ? jobData[field].trim()
+                    : String(jobData[field])
+            );
         }
     });
 
@@ -203,12 +271,12 @@ const updateJob = async (uid, jobData) => {
         WHERE uid = ?
     `;
 
-    let result;
+    let result: DbRunResult;
 
     try {
         result = await dbRun(query, values);
     } catch (error) {
-        throw createServiceError("Failed to update job.", 500, error);
+        throw createServiceError("Failed to update job.", 500, error as Error);
     }
 
     if (result.changes === 0) {
@@ -220,13 +288,13 @@ const updateJob = async (uid, jobData) => {
     };
 };
 
-const deleteJob = async (uid) => {
-    let result;
+const deleteJob = async (uid: string): Promise<DeleteJobResult> => {
+    let result: DbRunResult;
 
     try {
         result = await dbRun("DELETE FROM jobs WHERE uid = ?", [uid]);
     } catch (error) {
-        throw createServiceError("Failed to delete job.", 500, error);
+        throw createServiceError("Failed to delete job.", 500, error as Error);
     }
 
     if (result.changes === 0) {
@@ -238,7 +306,7 @@ const deleteJob = async (uid) => {
     };
 };
 
-module.exports = {
+export default {
     getAllJobs,
     createJob,
     updateJob,

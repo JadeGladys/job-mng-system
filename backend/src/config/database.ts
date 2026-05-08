@@ -1,11 +1,18 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+import path from "path";
+import sqlite3 from "sqlite3";
 
-const sqlite3 = require("sqlite3").verbose();
-const path = require("path");
+dotenv.config();
 
-const dbPath = path.resolve(__dirname, "../../", process.env.DATABASE_URL || "./job-mng-system.sqlite");
+const sqlite = sqlite3.verbose();
 
-const db = new sqlite3.Database(dbPath, (err) => {
+const dbPath = path.resolve(
+    __dirname,
+    "../../",
+    process.env.DATABASE_URL || "./job-mng-system.sqlite"
+);
+
+const db = new sqlite.Database(dbPath, (err: Error | null) => {
     if (err) {
         console.error("Database connection failed:", err.message);
     } else {
@@ -13,4 +20,4 @@ const db = new sqlite3.Database(dbPath, (err) => {
     }
 });
 
-module.exports = db;
+export default db;

@@ -1,12 +1,12 @@
-const express = require("express");
-const {
-    getAllJobs,
+import express from "express";
+import {
     createJob,
-    updateJob,
     deleteJob,
-} = require("../controllers/jobController");
-const authenticateToken = require("../middleware/authMiddleware");
-const authorizeRoles = require("../middleware/authorizeRoles");
+    getAllJobs,
+    updateJob,
+} from "../controllers/jobController";
+import authenticateToken from "../middleware/authMiddleware";
+import authorizeRoles from "../middleware/authorizeRoles";
 
 const router = express.Router();
 
@@ -16,4 +16,4 @@ router.post("/", authenticateToken, authorizeRoles("admin"), createJob);
 router.patch("/:uid", authenticateToken, authorizeRoles("admin"), updateJob);
 router.delete("/:uid", authenticateToken, authorizeRoles("admin"), deleteJob);
 
-module.exports = router;
+export default router;

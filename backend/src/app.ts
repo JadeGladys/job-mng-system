@@ -1,10 +1,11 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+import cors from "cors";
+import express, { Request, Response } from "express";
+import initializeDatabase from "./schema/init";
+import authRoutes from "./routes/authRoutes";
+import jobRoutes from "./routes/jobRoutes";
 
-const express = require("express");
-const cors = require("cors");
-const initializeDatabase = require("./schema/init");
-const authRoutes = require("./routes/authRoutes");
-const jobRoutes = require("./routes/jobRoutes");
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5050;
@@ -14,7 +15,7 @@ app.use(express.json());
 
 initializeDatabase();
 
-app.get("/", (req, res) => {
+app.get("/", (_req: Request, res: Response) => {
     res.json({
         message: "Job Management System backend is running",
     });
@@ -27,5 +28,4 @@ app.use("/api/jobs", jobRoutes);
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-
 
