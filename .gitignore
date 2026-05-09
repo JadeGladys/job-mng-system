@@ -18,6 +18,9 @@ frontend/.env
 *.sqlite3
 backend/*.sqlite
 
+# Uploaded files
+backend/uploads/
+
 # Logs
 logs
 *.log
