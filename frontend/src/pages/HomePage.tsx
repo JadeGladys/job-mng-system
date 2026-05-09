@@ -3,18 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
     clearFilters as clearJobFilters,
-    clearSelectedJob,
     getJobs,
     Job,
     JobFilters,
     setFilters,
-    setSelectedJob,
 } from "../features/jobsSlice";
 import { AppDispatch, RootState } from "../app/store";
-
-const workModeOptions = ["Remote", "Hybrid", "Onsite"];
-const jobTypeOptions = ["Full-time", "Part-time", "Internship", "Contract"];
-const categoryOptions = ["IT", "Commerce", "Education", "Marketing", "Design"];
+import UserTaskbar from "../components/UserTaskbar";
+import {
+    buildCategoryOptions,
+    buildJobTypeOptions,
+    buildWorkModeOptions,
+    formatWorkModeLabel,
+} from "../utils/jobOptions";
 
 function HomePage() {
     const navigate = useNavigate();
@@ -23,11 +24,9 @@ function HomePage() {
     const jobs = useSelector((state: RootState) => state.jobs.items);
     const loading = useSelector((state: RootState) => state.jobs.loading);
     const error = useSelector((state: RootState) => state.jobs.error);
-    const selectedJob = useSelector((state: RootState) => state.jobs.selectedJob);
     const [heroFilters, setHeroFilters] = useState<JobFilters>(storedFilters);
 
     const signedInUser = useSelector((state: RootState) => state.auth.user);
-    const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
     useEffect(() => {
         dispatch(getJobs(storedFilters));
@@ -46,6 +45,19 @@ function HomePage() {
             storedFilters.title ? `${storedFilters.title} roles` : "",
         ].filter(Boolean);
     }, [storedFilters]);
+
+    const categoryOptions = useMemo(() => buildCategoryOptions(jobs), [jobs]);
+    const jobTypeOptions = useMemo(() => buildJobTypeOptions(jobs), [jobs]);
+    const workModeOptions = useMemo(() => buildWorkModeOptions(jobs), [jobs]);
+    const defaultTags = useMemo(() => {
+        const tags = [
+            workModeOptions[0],
+            jobTypeOptions[0],
+            categoryOptions[0],
+        ].filter(Boolean);
+
+        return tags.length > 0 ? tags : ["Browse current roles"];
+    }, [categoryOptions, jobTypeOptions, workModeOptions]);
 
     const handleHeroChange = (
         event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -85,68 +97,35 @@ function HomePage() {
 
         setHeroFilters(cleared);
         dispatch(clearJobFilters());
-        dispatch(clearSelectedJob());
     };
-
-
-    const getInitials = (name?: string) => {
-        if (!name) {
-            return "U";
-        }
-
-        return name
-            .trim()
-            .split(" ")
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0].toUpperCase())
-            .join("");
-    };
-
     const handleJobSelection = (job: Job) => {
         if (!signedInUser) {
             navigate("/auth");
             return;
         }
 
-        dispatch(setSelectedJob(job));
+        navigate(`/jobs/${job.uid}`);
     };
 
 
     return (
         <div className="jobs-page">
+            <UserTaskbar currentPath="home" />
+
             <header className="jobs-topbar">
                 <div className="jobs-brand">
-                    <span className="jobs-brand-mark" />
                     <div>
                         <strong>Job MNG System</strong>
-                        <span>Find roles built for how you work best.</span>
                     </div>
                 </div>
 
-                <nav className="jobs-nav">
-                    {isAuthenticated && signedInUser ? (
-                        <button
-                            type="button"
-                            className="jobs-profile-button"
-                            onClick={() =>
-                                navigate(signedInUser.role === "admin" ? "/admin" : "/dashboard")
-                            }
-                        >
-                            <span className="jobs-profile-avatar">{getInitials(signedInUser.name)}</span>
-                            <span className="jobs-profile-name">{signedInUser.name}</span>
-                        </button>
-                    ) : (
-                        <button type="button" className="jobs-nav-link" onClick={() => navigate("/auth")}>
-                            Sign in
-                        </button>
-                    )}
-                </nav>
+                <nav className="jobs-nav" />
             </header>
 
             <section className="jobs-hero">
                 <div className="jobs-hero-copy">
                     <span className="jobs-section-label">Curated opportunities</span>
+                    <h1>Discover better work without losing the rhythm that suits you.</h1>
                 </div>
 
                 <form className="jobs-searchbar" onSubmit={handleSearch}>
@@ -181,10 +160,10 @@ function HomePage() {
                 </form>
 
                 <div className="jobs-tags">
-                    {(highlightedTags.length > 0 ? highlightedTags : ["Remote", "Full-time", "IT"]).map(
+                    {(highlightedTags.length > 0 ? highlightedTags : defaultTags).map(
                         (tag) => (
                             <span key={tag} className="jobs-tag">
-                                {tag}
+                                {formatWorkModeLabel(tag)}
                             </span>
                         )
                     )}
@@ -209,7 +188,7 @@ function HomePage() {
                                     checked={heroFilters.work_mode === option}
                                     onChange={() => applySingleFilter("work_mode", option)}
                                 />
-                                <span>{option}</span>
+                                <span>{formatWorkModeLabel(option)}</span>
                             </label>
                         ))}
                     </div>
@@ -249,7 +228,7 @@ function HomePage() {
                             <h2>Available jobs</h2>
                             <p>{loading ? "Refreshing listings..." : `${jobs.length} roles available right now`}</p>
                         </div>
-                        {!isAuthenticated && (
+                        {!signedInUser && (
                             <button type="button" className="jobs-secondary-button" onClick={() => navigate("/auth")}>
                                 Sign in
                             </button>
@@ -321,62 +300,6 @@ function HomePage() {
                 </div>
             </section>
 
-            {signedInUser && selectedJob ? (
-                <div className="job-preview-backdrop" onClick={() => dispatch(clearSelectedJob())}>
-                    <aside
-                        className="job-preview-panel"
-                        onClick={(event) => event.stopPropagation()}
-                        aria-label="Selected job details"
-                    >
-                        <div className="job-preview-header">
-                            <button
-                                type="button"
-                                className="job-preview-close"
-                                onClick={() => dispatch(clearSelectedJob())}
-                                aria-label="Close job details"
-                            >
-                                ×
-                            </button>
-
-                            <span className="job-card-company job-preview-company">{selectedJob.company}</span>
-                        </div>
-
-                        <h2>{selectedJob.title}</h2>
-
-                        <div className="job-card-meta">
-                            <span>{selectedJob.location}</span>
-                            <span>{selectedJob.category}</span>
-                            <span>{selectedJob.job_type}</span>
-                            <span>{selectedJob.work_mode}</span>
-                        </div>
-
-                        <div className="job-preview-section">
-                            <h3>Role overview</h3>
-                            <p>{selectedJob.description}</p>
-                        </div>
-
-                        <div className="job-preview-section">
-                            <h3>Requirements</h3>
-                            <p>{selectedJob.requirements}</p>
-                        </div>
-
-                        <div className="job-preview-grid">
-                            <div>
-                                <span>Deadline</span>
-                                <strong>{selectedJob.deadline}</strong>
-                            </div>
-                            <div>
-                                <span>Work mode</span>
-                                <strong>{selectedJob.work_mode}</strong>
-                            </div>
-                        </div>
-
-                        <button type="button" className="jobs-primary-button job-preview-cta">
-                            Apply
-                        </button>
-                    </aside>
-                </div>
-            ) : null}
         </div>
     );
 }

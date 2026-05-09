@@ -7,6 +7,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AdminRoute from "./routes/AdminRoute";
 import HomePage from "./pages/HomePage";
+import JobDetailsPage from "./pages/JobDetailsPage";
+import MyApplicationsPage from "./pages/MyApplicationsPage";
 
 type AuthMode = "login" | "register";
 
@@ -25,10 +27,12 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/jobs/:uid" element={<JobDetailsPage />} />
         <Route path="/auth" element={<AuthPageSwitcher />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/my-applications" element={<MyApplicationsPage />} />
         </Route>
 
         <Route element={<AdminRoute />}>
