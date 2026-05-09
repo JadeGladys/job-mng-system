@@ -42,6 +42,10 @@ type CreateJobResult = {
     job: JobRecord;
 };
 
+type ExistingJobRow = {
+    id: number;
+};
+
 type UpdateJobResult = {
     message: string;
 };
@@ -83,6 +87,18 @@ const createServiceError = (
 
     return error;
 };
+
+const dbGet = <T>(query: string, params: unknown[] = []): Promise<T | undefined> =>
+    new Promise((resolve, reject) => {
+        db.get(query, params, (error: Error | null, row: T | undefined) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve(row);
+        });
+    });
 
 const dbAll = <T>(query: string, params: unknown[] = []): Promise<T[]> =>
     new Promise((resolve, reject) => {
@@ -194,6 +210,29 @@ const createJob = async (
         requirements: jobData.requirements.trim(),
         deadline: jobData.deadline,
     };
+
+    let existingJob: ExistingJobRow | undefined;
+
+    try {
+        existingJob = await dbGet<ExistingJobRow>(
+            `
+            SELECT id
+            FROM jobs
+            WHERE LOWER(title) = LOWER(?)
+              AND LOWER(company) = LOWER(?)
+            `,
+            [trimmedJobData.title, trimmedJobData.company]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to check existing job.", 500, error as Error);
+    }
+
+    if (existingJob) {
+        throw createServiceError(
+            "A job with the same title and company already exists.",
+            409
+        );
+    }
 
     try {
         await dbRun(

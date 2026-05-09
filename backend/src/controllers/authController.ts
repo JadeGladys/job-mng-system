@@ -45,8 +45,28 @@ const getAuthenticatedUser = (req: Request, res: Response) => {
     });
 };
 
+const getAllUsers = async (req: Request, res: Response) => {
+    try {
+        const users = await authService.getAllUsers(req.query);
+        return res.status(200).json({
+            message: "Users fetched successfully.",
+            users,
+        });
+    } catch (error) {
+        const serviceError = error as ServiceError;
+
+        return res.status(serviceError.status || 500).json({
+            message: serviceError.message || "Failed to fetch users.",
+            ...(serviceError.originalError
+                ? { error: serviceError.originalError.message }
+                : {}),
+        });
+    }
+};
+
 export {
     registerUser,
     loginUser,
     getAuthenticatedUser,
+    getAllUsers,
 };

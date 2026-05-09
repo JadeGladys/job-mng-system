@@ -23,6 +23,19 @@ type RegisterUserInput = {
     password: string;
 };
 
+type UserRecord = ServiceUser & {
+    created_at?: string;
+    updated_at?: string;
+};
+
+type UsersListResult = UserRecord[];
+
+export type UsersFilters = {
+    name?: string;
+    email?: string;
+    role?: string;
+};
+
 type LoginUserInput = {
     email: string;
     password: string;
@@ -72,6 +85,18 @@ const createServiceError = (
 
     return error;
 };
+
+const dbAll = <T>(query: string, params: unknown[] = []): Promise<T[]> =>
+    new Promise((resolve, reject) => {
+        db.all(query, params, (error: Error | null, rows: T[]) => {
+            if (error) {
+                reject(error);
+                return;
+            }
+
+            resolve(rows);
+        });
+    });
 
 const dbGet = <T>(query: string, params: unknown[] = []): Promise<T | undefined> =>
     new Promise((resolve, reject) => {
@@ -226,7 +251,55 @@ const loginUser = async ({
     };
 };
 
+const getAllUsers = async (filters: UsersFilters = {}): Promise<UsersListResult> => {
+    const { name, email, role } = filters;
+
+    let query = `
+        SELECT
+            uid,
+            name,
+            email,
+            phone_number,
+            role,
+            created_at,
+            updated_at
+        FROM users
+    `;
+
+    const conditions: string[] = [];
+    const params: string[] = [];
+
+    if (name) {
+        conditions.push("name LIKE ?");
+        params.push(`%${name}%`);
+    }
+
+    if (email) {
+        conditions.push("email LIKE ?");
+        params.push(`%${email}%`);
+    }
+
+    if (role) {
+        conditions.push("role LIKE ?");
+        params.push(`%${role}%`);
+    }
+
+    if (conditions.length > 0) {
+        query += ` WHERE ${conditions.join(" AND ")}`;
+    }
+
+    query += " ORDER BY created_at DESC";
+
+    try {
+        return await dbAll<UserRecord>(query, params);
+    } catch (error) {
+        throw createServiceError("Failed to fetch jobs.", 500, error as Error);
+    }
+};
+
+
 export default {
     registerUser,
     loginUser,
+    getAllUsers,
 };

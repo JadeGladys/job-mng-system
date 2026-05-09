@@ -43,13 +43,13 @@ const initializeDatabase = (): void => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 uid TEXT NOT NULL UNIQUE,
                 job_id INTEGER NOT NULL,
-                cover_letter TEXT NOT NULL,
+                cover_letter_file_link TEXT NOT NULL,
                 cv_link TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
+                status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'pending', 'rejected', 'shortlisted')),
                 ai_score INTEGER,
                 ai_summary TEXT,
                 ai_recommendation TEXT,
-                created_by INTEGER,
+                created_by INTEGER NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_by INTEGER,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -58,6 +58,7 @@ const initializeDatabase = (): void => {
                 FOREIGN KEY (updated_by) REFERENCES users(id)
             )
         `);
+
 
         console.log("Database schema initialized.");
     });
