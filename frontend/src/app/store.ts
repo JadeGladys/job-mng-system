@@ -1,11 +1,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import appReducer from "../features/appSlice";
+import applicationsReducer from "../features/applicationsSlice";
 import authReducer from "../features/authSlice";
 import jobsReducer from "../features/jobsSlice";
 
 export const store = configureStore({
     reducer: {
         app: appReducer,
+        applications: applicationsReducer,
         auth: authReducer,
         jobs: jobsReducer,
     },

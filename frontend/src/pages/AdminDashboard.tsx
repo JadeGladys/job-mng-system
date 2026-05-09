@@ -10,10 +10,15 @@ import {
 import { logout } from "../features/authSlice";
 import { getJobs, Job } from "../features/jobsSlice";
 import { AppDispatch, RootState } from "../app/store";
-
-const categoryOptions = ["IT", "Commerce", "Education", "Marketing", "Design"];
-const jobTypeOptions = ["Full-time", "Part-time", "Internship", "Contract"];
-const workModeOptions = ["Remote", "Hybrid", "Onsite"];
+import {
+    buildCategoryOptions,
+    buildJobTypeOptions,
+    buildWorkModeOptions,
+    DEFAULT_CATEGORY_OPTIONS,
+    DEFAULT_JOB_TYPE_OPTIONS,
+    DEFAULT_WORK_MODE_OPTIONS,
+    formatWorkModeLabel,
+} from "../utils/jobOptions";
 
 type AdminView = "overview" | "create" | "manage" | "settings";
 
@@ -37,9 +42,9 @@ const emptyForm: JobPayload = {
     description: "",
     location: "",
     company: "",
-    category: "IT",
-    job_type: "Full-time",
-    work_mode: "Hybrid",
+    category: DEFAULT_CATEGORY_OPTIONS[0],
+    job_type: DEFAULT_JOB_TYPE_OPTIONS[0],
+    work_mode: DEFAULT_WORK_MODE_OPTIONS[1],
     requirements: "",
     deadline: "",
 };
@@ -121,6 +126,9 @@ function AdminDashboard() {
     const loading = useSelector((state: RootState) => state.jobs.loading);
     const jobsError = useSelector((state: RootState) => state.jobs.error);
     const error = actionError || jobsError;
+    const categoryOptions = useMemo(() => buildCategoryOptions(jobs), [jobs]);
+    const jobTypeOptions = useMemo(() => buildJobTypeOptions(jobs), [jobs]);
+    const workModeOptions = useMemo(() => buildWorkModeOptions(jobs), [jobs]);
 
     const currentUser = useSelector((state: RootState) => state.auth.user);
 
@@ -224,9 +232,9 @@ function AdminDashboard() {
             description: job.description ?? "",
             location: job.location ?? "",
             company: job.company ?? "",
-            category: job.category ?? "IT",
-            job_type: job.job_type ?? "Full-time",
-            work_mode: job.work_mode ?? "Hybrid",
+            category: job.category ?? categoryOptions[0] ?? DEFAULT_CATEGORY_OPTIONS[0],
+            job_type: job.job_type ?? jobTypeOptions[0] ?? DEFAULT_JOB_TYPE_OPTIONS[0],
+            work_mode: job.work_mode ?? workModeOptions[0] ?? DEFAULT_WORK_MODE_OPTIONS[0],
             requirements: job.requirements ?? "",
             deadline: job.deadline ?? "",
         });
@@ -497,7 +505,7 @@ function AdminDashboard() {
                             <select name="work_mode" value={formData.work_mode} onChange={handleChange}>
                                 {workModeOptions.map((option) => (
                                     <option key={option} value={option}>
-                                        {option}
+                                        {formatWorkModeLabel(option)}
                                     </option>
                                 ))}
                             </select>
