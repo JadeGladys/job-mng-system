@@ -163,6 +163,35 @@ const submitApplication = async (req: Request<ApplicationParams>, res: Response)
     }
 };
 
+const updateApplicationStatus = async (req: Request<ApplicationParams>, res: Response) => {
+    if (!req.user) {
+        return res.status(401).json({
+            message: "Unauthorized. User information is missing.",
+        });
+    }
+
+    try {
+        const result = await applicationService.updateApplicationStatus(
+            req.params.uid,
+            {
+                status: req.body.status,
+            },
+            req.user
+        );
+
+        return res.status(200).json(result);
+    } catch (error) {
+        const serviceError = error as ServiceError;
+
+        return res.status(serviceError.status || 500).json({
+            message: serviceError.message || "Failed to update application status.",
+            ...(serviceError.originalError
+                ? { error: serviceError.originalError.message }
+                : {}),
+        });
+    }
+};
+
 const deleteApplication = async (req: Request<ApplicationParams>, res: Response) => {
     if (!req.user) {
         return res.status(401).json({
@@ -190,6 +219,7 @@ export {
     createApplication,
     updateApplication,
     submitApplication,
+    updateApplicationStatus,
     getAllApplications,
     getMyApplications,
     deleteApplication,
