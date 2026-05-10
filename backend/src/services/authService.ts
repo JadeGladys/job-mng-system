@@ -23,6 +23,14 @@ type RegisterUserInput = {
     password: string;
 };
 
+type UpdateUserInput = {
+    name?: string;
+    email?: string;
+    phone_number?: string;
+    password?: string;
+    role?: string;
+};
+
 type UserRecord = ServiceUser & {
     created_at?: string;
     updated_at?: string;
@@ -43,6 +51,14 @@ type LoginUserInput = {
 
 type ExistingUserRow = {
     id: number;
+};
+
+type ExistingUserByUidRow = {
+    id: number;
+    uid: string;
+    email: string;
+    password: string;
+    role: string;
 };
 
 type DatabaseUserRow = {
@@ -293,8 +309,168 @@ const getAllUsers = async (filters: UsersFilters = {}): Promise<UsersListResult>
     try {
         return await dbAll<UserRecord>(query, params);
     } catch (error) {
-        throw createServiceError("Failed to fetch jobs.", 500, error as Error);
+        throw createServiceError("Failed to fetch users.", 500, error as Error);
     }
+};
+
+const updateUser = async (
+    userUid: string,
+    updates: UpdateUserInput
+): Promise<{ message: string }> => {
+    if (!userUid?.trim()) {
+        throw createServiceError("User uid is required.", 400);
+    }
+
+    let existingUser: ExistingUserByUidRow | undefined;
+
+    try {
+        existingUser = await dbGet<ExistingUserByUidRow>(
+            "SELECT id, uid, email, password, role FROM users WHERE uid = ?",
+            [userUid.trim()]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch user.", 500, error as Error);
+    }
+
+    if (!existingUser) {
+        throw createServiceError("User not found.", 404);
+    }
+
+    const updateFields: string[] = [];
+    const params: string[] = [];
+
+    if (updates.name !== undefined) {
+        const trimmedName = updates.name.trim();
+
+        if (!trimmedName) {
+            throw createServiceError("Name cannot be empty.", 400);
+        }
+
+        updateFields.push("name = ?");
+        params.push(trimmedName);
+    }
+
+    if (updates.email !== undefined) {
+        const normalizedEmail = updates.email.trim().toLowerCase();
+
+        if (!normalizedEmail) {
+            throw createServiceError("Email cannot be empty.", 400);
+        }
+
+        let conflictingUser: ExistingUserRow | undefined;
+
+        try {
+            conflictingUser = await dbGet<ExistingUserRow>(
+                "SELECT id FROM users WHERE email = ? AND uid != ?",
+                [normalizedEmail, existingUser.uid]
+            );
+        } catch (error) {
+            throw createServiceError("Failed to validate email.", 500, error as Error);
+        }
+
+        if (conflictingUser) {
+            throw createServiceError("A user with this email already exists.", 409);
+        }
+
+        updateFields.push("email = ?");
+        params.push(normalizedEmail);
+    }
+
+    if (updates.phone_number !== undefined) {
+        const trimmedPhoneNumber = updates.phone_number.trim();
+
+        if (!trimmedPhoneNumber) {
+            throw createServiceError("Phone number cannot be empty.", 400);
+        }
+
+        updateFields.push("phone_number = ?");
+        params.push(trimmedPhoneNumber);
+    }
+
+    if (updates.password !== undefined) {
+        const trimmedPassword = updates.password.trim();
+
+        if (!trimmedPassword) {
+            throw createServiceError("Password cannot be empty.", 400);
+        }
+
+        let hashedPassword: string;
+
+        try {
+            hashedPassword = await bcrypt.hash(trimmedPassword, 10);
+        } catch (error) {
+            throw createServiceError("Failed to hash password.", 500, error as Error);
+        }
+
+        updateFields.push("password = ?");
+        params.push(hashedPassword);
+    }
+
+    if (updates.role !== undefined) {
+        const normalizedRole = updates.role.trim().toLowerCase();
+
+        if (!["user", "admin"].includes(normalizedRole)) {
+            throw createServiceError("Role must be either user or admin.", 400);
+        }
+
+        updateFields.push("role = ?");
+        params.push(normalizedRole);
+    }
+
+    if (updateFields.length === 0) {
+        throw createServiceError("No valid user updates were provided.", 400);
+    }
+
+    updateFields.push("updated_at = CURRENT_TIMESTAMP");
+    params.push(existingUser.uid);
+
+    try {
+        await dbRun(
+            `
+            UPDATE users
+            SET ${updateFields.join(", ")}
+            WHERE uid = ?
+            `,
+            params
+        );
+    } catch (error) {
+        throw createServiceError("Failed to update user.", 500, error as Error);
+    }
+
+    return {
+        message: "User updated successfully.",
+    };
+};
+
+const deleteUser = async (userUid: string): Promise<{ message: string }> => {
+    if (!userUid?.trim()) {
+        throw createServiceError("User uid is required.", 400);
+    }
+
+    let existingUser: ExistingUserByUidRow | undefined;
+
+    try {
+        existingUser = await dbGet<ExistingUserByUidRow>(
+            "SELECT id, uid, email, password, role FROM users WHERE uid = ?",
+            [userUid.trim()]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch user.", 500, error as Error);
+    }
+
+    if (!existingUser) {
+        throw createServiceError("User not found.", 404);
+    }
+
+    try {
+        await dbRun("DELETE FROM users WHERE uid = ?", [existingUser.uid]);
+    } catch (error) {
+        throw createServiceError("Failed to delete user.", 500, error as Error);
+    }
+
+    return {
+        message: "User deleted successfully.",
+    };
 };
 
 
@@ -302,4 +478,6 @@ export default {
     registerUser,
     loginUser,
     getAllUsers,
+    updateUser,
+    deleteUser,
 };

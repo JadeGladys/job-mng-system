@@ -3,6 +3,7 @@ import {
     createApplication,
     updateApplication,
     submitApplication,
+    updateApplicationStatus,
     getAllApplications,
     getMyApplications,
     deleteApplication,
@@ -15,6 +16,12 @@ const router = express.Router();
 
 router.get("/", authenticateToken, authorizeRoles("admin"), getAllApplications);
 router.get("/me", authenticateToken, getMyApplications);
+router.patch(
+    "/:uid/status",
+    authenticateToken,
+    authorizeRoles("admin"),
+    updateApplicationStatus
+);
 
 router.post("/", authenticateToken, uploadApplicationFiles, createApplication);
 router.patch("/:uid", authenticateToken, uploadApplicationFiles, updateApplication);

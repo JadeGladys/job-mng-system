@@ -3,7 +3,11 @@ import { useState } from "react";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UserDashboard from "./pages/UserDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminCreateJobPage from "./pages/admin/AdminCreateJobPage";
+import AdminManageListingsPage from "./pages/admin/AdminManageListingsPage";
+import AdminManageUsersPage from "./pages/admin/AdminManageUsersPage";
+import AdminManageApplicationsPage from "./pages/admin/AdminManageApplicationsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AdminRoute from "./routes/AdminRoute";
 import HomePage from "./pages/HomePage";
@@ -37,6 +41,10 @@ function App() {
 
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/jobs/create" element={<AdminCreateJobPage />} />
+          <Route path="/admin/jobs/manage" element={<AdminManageListingsPage />} />
+          <Route path="/admin/users" element={<AdminManageUsersPage />} />
+          <Route path="/admin/applications" element={<AdminManageApplicationsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

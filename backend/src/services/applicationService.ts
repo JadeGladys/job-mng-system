@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import db from "../config/database";
 
 export type ApplicationFilters = {
+    job_uid?: string;
     title?: string;
     location?: string;
     category?: string;
@@ -17,7 +18,7 @@ type ApplicationRecord = {
     uid: string;
     cover_letter_file_link: string;
     cv_link: string;
-    status: string;
+    status: ApplicationRow["status"];
     ai_score: number | null;
     ai_summary: string | null;
     ai_recommendation: string | null;
@@ -90,6 +91,12 @@ type CreateApplicationResult = {
 
 type ActionResult = {
     message: string;
+};
+
+type AdminApplicationStatus = "rejected" | "shortlisted";
+
+type AdminStatusUpdateInput = {
+    status: AdminApplicationStatus;
 };
 
 type DbRunResult = {
@@ -374,6 +381,7 @@ const applyApplicationFilters = (
     filters: ApplicationFilters
 ): void => {
     const {
+        job_uid,
         title,
         location,
         category,
@@ -383,6 +391,11 @@ const applyApplicationFilters = (
         applicant_email,
         status,
     } = filters;
+
+    if (job_uid) {
+        conditions.push("jobs.uid = ?");
+        params.push(job_uid);
+    }
 
     if (title) {
         conditions.push("jobs.title LIKE ?");
@@ -424,6 +437,7 @@ const applyApplicationFilters = (
         params.push(status);
     }
 };
+
 
 const getAllApplications = async (
     filters: ApplicationFilters = {}
@@ -524,6 +538,57 @@ const getMyApplications = async (
     }
 };
 
+const updateApplicationStatus = async (
+    uid: string,
+    statusUpdate: AdminStatusUpdateInput,
+    currentUser: AuthenticatedUser
+): Promise<ActionResult> => {
+    const nextStatus = statusUpdate.status;
+
+    if (nextStatus !== "rejected" && nextStatus !== "shortlisted") {
+        throw createServiceError("Only rejected or shortlisted are allowed here.", 400);
+    }
+
+    let application: ApplicationRow | undefined;
+
+    try {
+        application = await dbGet<ApplicationRow>("SELECT * FROM applications WHERE uid = ?", [uid]);
+    } catch (error) {
+        throw createServiceError("Failed to fetch application.", 500, error as Error);
+    }
+
+    if (!application) {
+        throw createServiceError("Application not found.", 404);
+    }
+
+    if (application.status === "draft") {
+        throw createServiceError("Draft applications must be submitted before admin review.", 400);
+    }
+
+    try {
+        await dbRun(
+            `
+            UPDATE applications
+            SET
+                status = ?,
+                updated_by = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE uid = ?
+            `,
+            [nextStatus, currentUser.id, uid]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to update application status.", 500, error as Error);
+    }
+
+    return {
+        message:
+            nextStatus === "shortlisted"
+                ? "Application approved and moved to shortlisted."
+                : "Application rejected successfully.",
+    };
+};
+
 
 const deleteApplication = async (
     uid: string,
@@ -566,5 +631,6 @@ export default {
     submitApplication,
     getAllApplications,
     getMyApplications,
+    updateApplicationStatus,
     deleteApplication,
 };

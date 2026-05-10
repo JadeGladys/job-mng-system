@@ -24,6 +24,22 @@ export type LoginUserResponse = {
   user: AuthUser;
 };
 
+export type UsersFilters = {
+  name?: string;
+  email?: string;
+  role?: string;
+};
+
+export type AdminUserRecord = AuthUser & {
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type FetchUsersResponse = {
+  message: string;
+  users: AdminUserRecord[];
+};
+
 export const registerUser = async (
   userData: RegisterUserData
 ): Promise<RegisterUserResponse> => {
@@ -49,5 +65,18 @@ export const loginUser = async (
     return response.data;
   } catch (error) {
     throw new Error(getApiErrorMessage(error, "Login failed."));
+  }
+};
+
+export const fetchUsers = async (
+  filters: UsersFilters = {}
+): Promise<FetchUsersResponse> => {
+  try {
+    const response = await apiClient.get<FetchUsersResponse>("/auth/users", {
+      params: filters,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, "Failed to fetch users."));
   }
 };
