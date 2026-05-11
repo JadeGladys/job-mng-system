@@ -1,4 +1,3 @@
-import illustration from "../assets/auth-illustration.png";
 import { ReactNode } from "react";
 
 type AuthShellProps = {
