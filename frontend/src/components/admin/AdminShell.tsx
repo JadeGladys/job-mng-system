@@ -157,10 +157,6 @@ function AdminShell({
                     </div>
 
                     <div className="admin-jobs-header-actions">
-                        <div className="admin-jobs-header-user">
-                            <strong>{currentUser?.name || "Admin"}</strong>
-                        </div>
-
                         {actionLabel && onAction ? (
                             <button type="button" className="admin-jobs-ghost-button" onClick={onAction}>
                                 {actionLabel}
