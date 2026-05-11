@@ -46,6 +46,13 @@ type ExistingJobRow = {
     id: number;
 };
 
+type ExistingJobByUidRow = {
+    id: number;
+    uid: string;
+    title: string;
+    company: string;
+};
+
 type UpdateJobResult = {
     message: string;
 };
@@ -299,6 +306,50 @@ const updateJob = async (
 
     if (updates.length === 0) {
         throw createServiceError("At least one valid field is required for update.", 400);
+    }
+
+    let existingJob: ExistingJobByUidRow | undefined;
+
+    try {
+        existingJob = await dbGet<ExistingJobByUidRow>(
+            "SELECT id, uid, title, company FROM jobs WHERE uid = ?",
+            [uid]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch job.", 500, error as Error);
+    }
+
+    if (!existingJob) {
+        throw createServiceError("Job not found.", 404);
+    }
+
+    const nextTitle =
+        jobData.title !== undefined ? jobData.title.trim() : existingJob.title;
+    const nextCompany =
+        jobData.company !== undefined ? jobData.company.trim() : existingJob.company;
+
+    let conflictingJob: ExistingJobRow | undefined;
+
+    try {
+        conflictingJob = await dbGet<ExistingJobRow>(
+            `
+            SELECT id
+            FROM jobs
+            WHERE LOWER(title) = LOWER(?)
+              AND LOWER(company) = LOWER(?)
+              AND uid != ?
+            `,
+            [nextTitle, nextCompany, existingJob.uid]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to check existing job.", 500, error as Error);
+    }
+
+    if (conflictingJob) {
+        throw createServiceError(
+            "A job with the same title and company already exists.",
+            409
+        );
     }
 
     updates.push("updated_at = CURRENT_TIMESTAMP");
