@@ -3,6 +3,7 @@ module.exports = {
     testEnvironment: "node",
     roots: ["<rootDir>/src"],
     testMatch: ["**/tests/**/*.test.ts"],
+    setupFiles: ["<rootDir>/src/tests/setupTestEnv.ts"],
     moduleFileExtensions: ["ts", "js", "json"],
     transform: {
         "^.+\\.ts$": [
