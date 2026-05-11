@@ -1,23 +1,22 @@
 # Job MNG System
 
 ## Overview
-Job MNG System is a full-stack job board platform where users can browse job listings and apply for jobs, while admins can create and manage job posts, review applications, and use AI-assisted screening to support candidate evaluation.
+Job MNG System is a full-stack job board platform where users can browse jobs and submit applications, while admins can manage listings, review applications, and run AI-assisted screening.
 
 ## Tech Stack
-- Frontend: React.js + Redux Toolkit
-- Backend: Node.js + Express.js
-- Database: SQLite with raw SQL
+- Frontend: React + Redux Toolkit
+- Backend: Node.js + Express
+- Database: SQLite
 - Authentication: JWT
 - Testing: Jest, Supertest, React Testing Library
 
 ## Features
 - User registration and login
-- Role-based access control for admin and user
+- Admin and user role-based access
 - Public job listings and job details
-- Admin job creation, update, and deletion
-- Job application submission
-- Admin application review
-- AI-assisted application screening
+- Job draft creation and submission
+- Admin job and application management
+- AI-assisted application screening with fallback keyword mode
 
 ## AI Screening
 The application includes an AI-assisted screening feature that compares submitted applications against job requirements and returns:
@@ -65,10 +64,9 @@ Create a `.env` file inside the backend directory based on `.env.example`.
 PORT=5050
 DATABASE_URL=./job-mng-system.sqlite
 JWT_SECRET=job_mng_system_demo_secret
-AI_API_KEY=
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4.1-mini
 ```
-
-Create a `.env` file inside the frontend directory based on `.env.example`.
 
 ### Frontend Example
 
@@ -86,7 +84,7 @@ The project includes Docker support for both frontend and backend through `docke
 docker compose up --build
 ```
 
-This starts:
+App URLs::
 
 - backend on `http://localhost:5050`
 - frontend on `http://localhost:5173`
@@ -110,31 +108,17 @@ Email: admin@jobmng.local
 Password: Admin123!
 ```
 
-## Database
-
-The database includes the following main tables:
-
-- `users`
-- `jobs`
-- `applications`
-
-Applications also support AI-related fields such as:
-
-- `ai_score`
-- `ai_summary`
-- `ai_recommendation`
-
 ## Testing
 
-Testing will cover critical application flows including authentication, data fetching, application submission, and protected routes.
+### Backend
 
-## Deployment
+cd backend
+npm test
 
-Deployment is optional but recommended. Environment variables should be configured through the hosting platform settings.
+### Frontend
 
-## Notes
-
-This is the initial README structure. Setup instructions, scripts, testing commands, and deployment details will be completed as the project is finalized.
+cd frontend
+npm test
 
 ## Author
 
