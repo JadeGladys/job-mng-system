@@ -305,10 +305,6 @@ function MyApplicationsPage() {
                         <strong>My Applications</strong>
                     </div>
                 </div>
-
-                <button type="button" className="jobs-taskbar-link" onClick={() => navigate("/")}>
-                    Browse jobs
-                </button>
             </header>
 
             <section className="my-applications-shell">

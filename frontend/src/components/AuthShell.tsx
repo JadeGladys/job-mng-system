@@ -50,7 +50,6 @@ function AuthShell({
         <div className="auth-visual-art">
           <div className="auth-orb auth-orb-large" />
           <div className="auth-orb auth-orb-small" />
-          <img src={illustration} alt="Authentication illustration" className="auth-illustration" />
         </div>
       </aside>
     </div>

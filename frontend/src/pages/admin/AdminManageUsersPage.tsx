@@ -1,9 +1,8 @@
-import { ReactElement, useEffect, useMemo } from "react";
+import { ReactElement, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../app/store";
 import AdminShell from "../../components/admin/AdminShell";
 import { clearUserFilters, loadUsers, setUserFilters } from "../../features/usersSlice";
-import { AdminUserRecord } from "../../services/authService";
 
 const formatDate = (value?: string): string => {
     if (!value) {
@@ -55,19 +54,6 @@ function AdminManageUsersPage(): ReactElement {
             detail: "Applicants and non-admin accounts in the current view.",
         },
     ];
-
-    const latestUsers = useMemo(
-        () =>
-            [...users]
-                .sort((left, right) => {
-                    const leftDate = new Date(left.created_at || 0).getTime();
-                    const rightDate = new Date(right.created_at || 0).getTime();
-
-                    return rightDate - leftDate;
-                })
-                .slice(0, 4),
-        [users]
-    );
 
     return (
         <AdminShell
@@ -157,37 +143,6 @@ function AdminManageUsersPage(): ReactElement {
                             </label>
                         </div>
                     </div>
-                </article>
-
-                <article className="admin-jobs-overview-card">
-                    <div className="admin-jobs-section-header">
-                        <div>
-                            <h2>Recently joined</h2>
-                            <p>A quick snapshot of the newest user records in the current view.</p>
-                        </div>
-                    </div>
-
-                    {loading ? (
-                        <div className="jobs-empty-state">Loading recent users...</div>
-                    ) : latestUsers.length === 0 ? (
-                        <div className="jobs-empty-state">
-                            No users match the current filters yet.
-                        </div>
-                    ) : (
-                        <div className="admin-jobs-mini-list">
-                            {latestUsers.map((user: AdminUserRecord) => (
-                                <article key={user.uid} className="admin-jobs-mini-card">
-                                    <div className="admin-jobs-mini-copy">
-                                        <strong>{user.name}</strong>
-                                        <span>
-                                            {user.email} · Joined {formatDate(user.created_at)}
-                                        </span>
-                                    </div>
-                                    <span className="admin-jobs-mini-pill">{user.role}</span>
-                                </article>
-                            ))}
-                        </div>
-                    )}
                 </article>
             </section>
 

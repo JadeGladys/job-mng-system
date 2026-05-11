@@ -2,7 +2,6 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useState } from "react";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
-import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminCreateJobPage from "./pages/admin/AdminCreateJobPage";
 import AdminManageListingsPage from "./pages/admin/AdminManageListingsPage";
@@ -35,7 +34,6 @@ function App() {
         <Route path="/auth" element={<AuthPageSwitcher />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<UserDashboard />} />
           <Route path="/my-applications" element={<MyApplicationsPage />} />
         </Route>
 

@@ -133,27 +133,22 @@ function AdminDashboard(): ReactElement {
         {
             label: "Live job posts",
             value: liveJobPosts,
-            detail: "Current active roles visible on the jobs board.",
         },
         {
             label: "Closing within 30 days",
             value: closingSoon,
-            detail: "Roles whose deadlines are coming up soon.",
         },
         {
             label: "Applications received",
             value: applicationsReceived,
-            detail: "All applications currently in the system.",
         },
         {
             label: "Job postings",
             value: liveJobPosts,
-            detail: "Total postings available for charted activity below.",
         },
         {
             label: "AI screenings completed",
             value: aiScreeningsCompleted,
-            detail: "Applications that already have AI review output.",
         },
     ];
 
@@ -199,7 +194,6 @@ function AdminDashboard(): ReactElement {
                     <article key={item.label} className="admin-jobs-stat-card">
                         <span>{item.label}</span>
                         <strong>{item.value}</strong>
-                        <p>{item.detail}</p>
                     </article>
                 ))}
             </section>
