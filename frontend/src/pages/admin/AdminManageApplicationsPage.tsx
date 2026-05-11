@@ -9,7 +9,6 @@ import {
     setAdminApplicationFilters,
     updateAdminStatus,
 } from "../../features/applicationsSlice";
-import { ApplicationRecord } from "../../services/applicationService";
 import {
     formatWorkModeLabel,
     mergeOptionValues,
@@ -43,11 +42,6 @@ const resolveAssetUrl = (path: string): string => {
 
     return backendBaseUrl ? `${backendBaseUrl}${path}` : path;
 };
-
-const isSubmittedApplication = (application: ApplicationRecord): boolean =>
-    application.status === "pending" ||
-    application.status === "rejected" ||
-    application.status === "shortlisted";
 
 function AdminManageApplicationsPage(): ReactElement {
     const dispatch = useDispatch<AppDispatch>();
@@ -83,10 +77,7 @@ function AdminManageApplicationsPage(): ReactElement {
         return () => window.clearTimeout(timeoutId);
     }, [adminActionMessage, dispatch]);
 
-    const submittedApplications = useMemo(
-        () => applications.filter((application) => isSubmittedApplication(application)),
-        [applications]
-    );
+    const submittedApplications = applications;
 
     const titleOptions = useMemo(
         () =>

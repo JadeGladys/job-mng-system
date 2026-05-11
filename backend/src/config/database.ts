@@ -1,8 +1,5 @@
-import dotenv from "dotenv";
 import path from "path";
 import sqlite3 from "sqlite3";
-
-dotenv.config();
 
 const sqlite = sqlite3.verbose();
 
