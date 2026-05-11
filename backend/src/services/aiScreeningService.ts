@@ -2,7 +2,7 @@ import type {
     AiRecommendation,
     ScreenApplicationInput,
     ScreenApplicationOutput,
-} from "./aiScreeningTypes";
+} from "../types/aiScreeningTypes";
 import keywordScreeningFallbackService from "./keywordScreeningFallbackService";
 
 type OpenAiMessage = {

@@ -3,6 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../app/store";
 import AdminShell from "../../components/admin/AdminShell";
 import {
+    clearAiScreeningFeedback,
+    runAiScreening,
+} from "../../features/AiScreeningSlice"
+import {
     clearAdminApplicationFeedback,
     clearAdminApplicationFilters,
     loadAdminApplications,
@@ -58,8 +62,17 @@ function AdminManageApplicationsPage(): ReactElement {
     const adminActionMessage = useSelector(
         (state: RootState) => state.applications.adminActionMessage
     );
+    const aiScreeningResults = useSelector(
+        (state: RootState) => state.aiScreening.resultsByApplicationUid
+    );
+
+    const aiScreeningLoading = useSelector((state: RootState) => state.aiScreening.loading);
+    const aiScreeningMessage = useSelector((state: RootState) => state.aiScreening.message);
     const [selectedApplicationUid, setSelectedApplicationUid] = useState<string | null>(null);
+    const [aiPanelApplicationUid, setAiPanelApplicationUid] = useState<string | null>(null);
+    const [aiPanelError, setAiPanelError] = useState("");
     const [statusTargetUid, setStatusTargetUid] = useState<string | null>(null);
+    const [screeningTargetUid, setScreeningTargetUid] = useState<string | null>(null);
 
     useEffect(() => {
         void dispatch(loadAdminApplications(filters));
@@ -76,6 +89,18 @@ function AdminManageApplicationsPage(): ReactElement {
 
         return () => window.clearTimeout(timeoutId);
     }, [adminActionMessage, dispatch]);
+
+    useEffect(() => {
+        if (!aiScreeningMessage) {
+            return undefined;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            dispatch(clearAiScreeningFeedback());
+        }, 3200);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [aiScreeningMessage, dispatch]);
 
     const submittedApplications = applications;
 
@@ -122,7 +147,30 @@ function AdminManageApplicationsPage(): ReactElement {
         [selectedApplicationUid, submittedApplications]
     );
 
-    const aiPanelApplication = selectedApplication;
+    const aiPanelBaseApplication = useMemo(
+        () =>
+            aiPanelApplicationUid
+                ? submittedApplications.find(
+                    (application) => application.uid === aiPanelApplicationUid
+                ) || null
+                : null,
+        [aiPanelApplicationUid, submittedApplications]
+    );
+
+    const aiPanelResult = aiPanelApplicationUid
+        ? aiScreeningResults[aiPanelApplicationUid] || null
+        : null;
+
+    const aiPanelApplication =
+        aiPanelBaseApplication && aiPanelResult
+            ? {
+                ...aiPanelBaseApplication,
+                ai_score: aiPanelResult.ai_score,
+                ai_summary: aiPanelResult.ai_summary,
+                ai_recommendation: aiPanelResult.ai_recommendation,
+            }
+            : aiPanelBaseApplication;
+
 
     const handleStatusUpdate = async (
         event: MouseEvent<HTMLButtonElement>,
@@ -139,6 +187,33 @@ function AdminManageApplicationsPage(): ReactElement {
         }
     };
 
+    const handleAiScreening = async (
+        event: MouseEvent<HTMLButtonElement>,
+        applicationUid: string
+    ) => {
+        event.stopPropagation();
+        setAiPanelApplicationUid(applicationUid);
+        setAiPanelError("");
+        setScreeningTargetUid(applicationUid);
+
+        try {
+            await dispatch(runAiScreening(applicationUid)).unwrap();
+            await dispatch(loadAdminApplications(filters)).unwrap();
+        } catch (error) {
+            setAiPanelError(
+                typeof error === "string"
+                    ? error
+                    : error instanceof Error
+                        ? error.message
+                        : "Failed to run AI screening."
+            );
+        }
+        finally {
+            setScreeningTargetUid(null);
+        }
+    };
+
+
     return (
         <AdminShell
             currentSection="manage-applications"
@@ -154,6 +229,8 @@ function AdminManageApplicationsPage(): ReactElement {
                         <div className="admin-jobs-success">{adminActionMessage}</div>
                     ) : null}
                 </section>
+
+
             )}
 
             <section className="admin-jobs-single-panel">
@@ -293,6 +370,8 @@ function AdminManageApplicationsPage(): ReactElement {
                             {submittedApplications.map((application) => {
                                 const isStatusUpdating =
                                     adminActionLoading && statusTargetUid === application.uid;
+                                const isAiScreeningCurrent =
+                                    aiScreeningLoading && screeningTargetUid === application.uid;
 
                                 return (
                                     <article
@@ -365,11 +444,12 @@ function AdminManageApplicationsPage(): ReactElement {
                                             <button
                                                 type="button"
                                                 className="admin-jobs-inline-button is-info"
-                                                onClick={(event) => event.stopPropagation()}
-                                                disabled
-                                                title="AI screening will be enabled in a later task."
+                                                onClick={(event) =>
+                                                    void handleAiScreening(event, application.uid)
+                                                }
+                                                disabled={isAiScreeningCurrent}
                                             >
-                                                AI screening
+                                                {isAiScreeningCurrent ? "Screening..." : "AI screening"}
                                             </button>
                                         </div>
                                     </article>
@@ -402,11 +482,17 @@ function AdminManageApplicationsPage(): ReactElement {
                                 </span>
                             </div>
 
-                            {aiPanelApplication.ai_summary ? (
+                            {aiScreeningLoading && screeningTargetUid === aiPanelApplication.uid ? (
+                                <div className="jobs-empty-state">
+                                    AI screening is running for this application...
+                                </div>
+                            ) : aiPanelError && aiPanelApplicationUid === aiPanelApplication.uid ? (
+                                <div className="jobs-empty-state">{aiPanelError}</div>
+                            ) : aiPanelApplication.ai_summary ? (
                                 <>
-                                    <div className="admin-ai-score-card">
-                                        <span>Screening score</span>
-                                        <strong>{aiPanelApplication.ai_score || 0}/100</strong>
+                                    <div className="admin-ai-copy-block">
+                                        <strong>Score</strong>
+                                        <p>{aiPanelApplication.ai_score || 0}/100</p>
                                     </div>
 
                                     <div className="admin-ai-copy-block">
@@ -424,15 +510,14 @@ function AdminManageApplicationsPage(): ReactElement {
                                 </>
                             ) : (
                                 <div className="jobs-empty-state">
-                                    The AI screening workflow is reserved for a later task. This panel
-                                    will show screening output here once that work is added.
+                                    No AI screening has been run for this application yet.
                                 </div>
                             )}
                         </div>
                     ) : (
                         <div className="jobs-empty-state">
-                            Pick an application from the review queue to preview where AI screening
-                            results will appear.
+                            Run AI screening from the review queue to populate this panel with
+                            score, summary, and recommendation.
                         </div>
                     )}
                 </article>
