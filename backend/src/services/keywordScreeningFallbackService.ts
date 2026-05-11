@@ -2,7 +2,7 @@ import type {
     AiRecommendation,
     ScreenApplicationInput,
     ScreenApplicationOutput,
-} from "./aiScreeningTypes";
+} from "../types/aiScreeningTypes";
 
 const MINIMUM_KEYWORD_LENGTH = 3;
 const MAX_KEYWORDS = 16;
