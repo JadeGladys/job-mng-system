@@ -1,26 +1,9 @@
-type AiRecommendation = "reject" | "review" | "shortlist";
-
-type ScreenApplicationInput = {
-    applicantName: string;
-    applicantEmail: string;
-    applicantPhoneNumber: string;
-    jobTitle: string;
-    company: string;
-    location: string;
-    category: string;
-    jobType: string;
-    workMode: string;
-    jobDescription: string;
-    jobRequirements: string;
-    cvText: string;
-    coverLetterText: string;
-};
-
-type ScreenApplicationOutput = {
-    score: number;
-    summary: string;
-    recommendation: AiRecommendation;
-};
+import type {
+    AiRecommendation,
+    ScreenApplicationInput,
+    ScreenApplicationOutput,
+} from "./aiScreeningTypes";
+import keywordScreeningFallbackService from "./keywordScreeningFallbackService";
 
 type OpenAiMessage = {
     role: "system" | "user";
@@ -107,6 +90,21 @@ const parseScreeningResponse = (content: string): ScreenApplicationOutput => {
     };
 };
 
+const shouldFallbackToKeywordScreening = (error: unknown): boolean => {
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+
+    return (
+        message.includes("openai_api_key") ||
+        message.includes("api key") ||
+        message.includes("fetch failed") ||
+        message.includes("network") ||
+        message.includes("timed out") ||
+        message.includes("empty") ||
+        message.includes("could not be parsed") ||
+        message.includes("failed")
+    );
+};
+
 const buildMessages = (input: ScreenApplicationInput): OpenAiMessage[] => [
     {
         role: "system",
@@ -154,38 +152,50 @@ const screenApplication = async (
     const model = process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL;
 
     if (!apiKey) {
-        throw new Error("OPENAI_API_KEY is missing. Add it to the backend environment.");
-    }
-
-    const response = await fetch(OPENAI_API_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-            model,
-            temperature: 0.2,
-            response_format: { type: "json_object" },
-            messages: buildMessages(input),
-        }),
-    });
-
-    const data = (await response.json()) as OpenAiChatCompletionResponse;
-
-    if (!response.ok) {
-        throw new Error(
-            data.error?.message || "AI screening request failed."
+        return keywordScreeningFallbackService.screenApplication(
+            input,
+            "OPENAI_API_KEY is missing"
         );
     }
 
-    const content = data.choices?.[0]?.message?.content;
+    try {
+        const response = await fetch(OPENAI_API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model,
+                temperature: 0.2,
+                response_format: { type: "json_object" },
+                messages: buildMessages(input),
+            }),
+        });
 
-    if (!content) {
-        throw new Error("AI screening response was empty.");
+        const data = (await response.json()) as OpenAiChatCompletionResponse;
+
+        if (!response.ok) {
+            throw new Error(data.error?.message || "AI screening request failed.");
+        }
+
+        const content = data.choices?.[0]?.message?.content;
+
+        if (!content) {
+            throw new Error("AI screening response was empty.");
+        }
+
+        return parseScreeningResponse(content);
+    } catch (error) {
+        if (!shouldFallbackToKeywordScreening(error)) {
+            throw error;
+        }
+
+        return keywordScreeningFallbackService.screenApplication(
+            input,
+            error instanceof Error ? error.message : "Primary AI screening failed"
+        );
     }
-
-    return parseScreeningResponse(content);
 };
 
 export default {
