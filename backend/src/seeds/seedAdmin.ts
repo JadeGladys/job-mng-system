@@ -7,7 +7,7 @@ type ExistingAdminRow = {
     id: number;
 };
 
-const seedAdminUser = async (): Promise<void> => {
+export const ensureDefaultAdminUser = async (): Promise<void> => {
     initializeDatabase();
 
     const adminEmail = "admin@jobmng.local";
@@ -55,4 +55,4 @@ const seedAdminUser = async (): Promise<void> => {
     );
 };
 
-void seedAdminUser();
+void ensureDefaultAdminUser();

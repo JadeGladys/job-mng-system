@@ -6,6 +6,7 @@ import initializeDatabase from "./schema/init";
 import authRoutes from "./routes/authRoutes";
 import jobRoutes from "./routes/jobRoutes";
 import applicationRoutes from "./routes/applicationRoutes";
+import { ensureDefaultAdminUser } from "./seeds/seedAdmin";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use("/uploads", express.static(path.resolve(__dirname, "../uploads")));
 
 initializeDatabase();
+void ensureDefaultAdminUser();
 
 app.get("/", (_req: Request, res: Response) => {
     res.json({
