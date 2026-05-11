@@ -1,6 +1,11 @@
 import type { Request } from "express";
 import { randomUUID } from "crypto";
 import db from "../config/database";
+import {
+    extractTextFromLocalFile,
+    extractTextFromRemoteFile,
+} from "./documentExtractionService";
+import aiScreeningService from "./aiScreeningService";
 
 export type ApplicationFilters = {
     job_uid?: string;
@@ -102,6 +107,16 @@ type AdminStatusUpdateInput = {
 type DbRunResult = {
     lastID: number;
     changes: number;
+};
+
+type AiScreeningResult = {
+    message: string;
+    screening: {
+        application_uid: string;
+        ai_score: number;
+        ai_summary: string;
+        ai_recommendation: "reject" | "review" | "shortlist";
+    };
 };
 
 const createServiceError = (
@@ -375,6 +390,91 @@ const submitApplication = async (
     };
 };
 
+const updateApplicationStatus = async (
+    uid: string,
+    statusUpdate: AdminStatusUpdateInput,
+    currentUser: AuthenticatedUser
+): Promise<ActionResult> => {
+    const nextStatus = statusUpdate.status;
+
+    if (nextStatus !== "rejected" && nextStatus !== "shortlisted") {
+        throw createServiceError("Only rejected or shortlisted are allowed here.", 400);
+    }
+
+    let application: ApplicationRow | undefined;
+
+    try {
+        application = await dbGet<ApplicationRow>("SELECT * FROM applications WHERE uid = ?", [uid]);
+    } catch (error) {
+        throw createServiceError("Failed to fetch application.", 500, error as Error);
+    }
+
+    if (!application) {
+        throw createServiceError("Application not found.", 404);
+    }
+
+    if (application.status === "draft") {
+        throw createServiceError("Draft applications must be submitted before admin review.", 400);
+    }
+
+    try {
+        await dbRun(
+            `
+            UPDATE applications
+            SET
+                status = ?,
+                updated_by = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE uid = ?
+            `,
+            [nextStatus, currentUser.id, uid]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to update application status.", 500, error as Error);
+    }
+
+    return {
+        message:
+            nextStatus === "shortlisted"
+                ? "Application approved and moved to shortlisted."
+                : "Application rejected successfully.",
+    };
+};
+
+const deleteApplication = async (
+    uid: string,
+    currentUser: AuthenticatedUser
+): Promise<ActionResult> => {
+    let application: ApplicationRow | undefined;
+
+    try {
+        application = await dbGet<ApplicationRow>(
+            "SELECT * FROM applications WHERE uid = ? AND created_by = ?",
+            [uid, currentUser.id]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch application.", 500, error as Error);
+    }
+
+    if (!application) {
+        throw createServiceError("Application not found.", 404);
+    }
+
+    if (application.status !== "draft") {
+        throw createServiceError("Only draft applications can be deleted.", 400);
+    }
+
+    try {
+        await dbRun("DELETE FROM applications WHERE uid = ?", [uid]);
+    } catch (error) {
+        throw createServiceError("Failed to delete application.", 500, error as Error);
+    }
+
+    return {
+        message: "Application deleted successfully.",
+    };
+};
+
 const applyApplicationFilters = (
     conditions: string[],
     params: string[],
@@ -438,7 +538,6 @@ const applyApplicationFilters = (
     }
 };
 
-
 const getAllApplications = async (
     filters: ApplicationFilters = {}
 ): Promise<ApplicationsListResult> => {
@@ -472,7 +571,7 @@ const getAllApplications = async (
         INNER JOIN users ON applications.created_by = users.id
     `;
 
-    const conditions: string[] = [];
+    const conditions: string[] = ["applications.status IN ('pending', 'rejected', 'shortlisted')"];
     const params: string[] = [];
 
     applyApplicationFilters(conditions, params, filters);
@@ -487,6 +586,47 @@ const getAllApplications = async (
         return await dbAll<ApplicationRecord>(query, params);
     } catch (error) {
         throw createServiceError("Failed to fetch applications.", 500, error as Error);
+    }
+};
+
+const getApplicationByUid = async (
+    uid: string
+): Promise<ApplicationRecord | undefined> => {
+    try {
+        return await dbGet<ApplicationRecord>(
+            `
+            SELECT
+                applications.uid,
+                applications.cover_letter_file_link,
+                applications.cv_link,
+                applications.status,
+                applications.ai_score,
+                applications.ai_summary,
+                applications.ai_recommendation,
+                applications.created_at,
+                applications.updated_at,
+                jobs.uid AS job_uid,
+                jobs.title,
+                jobs.location,
+                jobs.category,
+                jobs.job_type,
+                jobs.work_mode,
+                jobs.company,
+                jobs.description,
+                jobs.requirements,
+                users.uid AS applicant_uid,
+                users.name AS applicant_name,
+                users.email AS applicant_email,
+                users.phone_number AS applicant_phone_number
+            FROM applications
+            INNER JOIN jobs ON applications.job_id = jobs.id
+            INNER JOIN users ON applications.created_by = users.id
+            WHERE applications.uid = ?
+            `,
+            [uid]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch application.", 500, error as Error);
     }
 };
 
@@ -538,89 +678,83 @@ const getMyApplications = async (
     }
 };
 
-const updateApplicationStatus = async (
+const runApplicationAiScreening = async (
     uid: string,
-    statusUpdate: AdminStatusUpdateInput,
-    currentUser: AuthenticatedUser
-): Promise<ActionResult> => {
-    const nextStatus = statusUpdate.status;
-
-    if (nextStatus !== "rejected" && nextStatus !== "shortlisted") {
-        throw createServiceError("Only rejected or shortlisted are allowed here.", 400);
-    }
-
-    let application: ApplicationRow | undefined;
-
-    try {
-        application = await dbGet<ApplicationRow>("SELECT * FROM applications WHERE uid = ?", [uid]);
-    } catch (error) {
-        throw createServiceError("Failed to fetch application.", 500, error as Error);
-    }
+    currentUser: { id: number }
+): Promise<AiScreeningResult> => {
+    const application = await getApplicationByUid(uid);
 
     if (!application) {
         throw createServiceError("Application not found.", 404);
     }
 
     if (application.status === "draft") {
-        throw createServiceError("Draft applications must be submitted before admin review.", 400);
+        throw createServiceError("Draft applications cannot be screened.", 400);
     }
+
+    let cvText = "";
+    let coverLetterText = "";
+
+    try {
+        cvText = await extractTextFromRemoteFile(application.cv_link);
+    } catch (error) {
+        throw createServiceError("Failed to read CV from the provided link.", 400, error as Error);
+    }
+
+    try {
+        coverLetterText = await extractTextFromLocalFile(application.cover_letter_file_link);
+    } catch (error) {
+        throw createServiceError("Failed to read the uploaded cover letter file.", 400, error as Error);
+    }
+
+    const aiResult = await aiScreeningService.screenApplication({
+        applicantName: application.applicant_name,
+        applicantEmail: application.applicant_email,
+        applicantPhoneNumber: application.applicant_phone_number,
+        jobTitle: application.title,
+        company: application.company,
+        location: application.location,
+        category: application.category,
+        jobType: application.job_type,
+        workMode: application.work_mode,
+        jobDescription: application.description,
+        jobRequirements: application.requirements,
+        cvText,
+        coverLetterText,
+    });
 
     try {
         await dbRun(
             `
             UPDATE applications
             SET
-                status = ?,
+                ai_score = ?,
+                ai_summary = ?,
+                ai_recommendation = ?,
                 updated_by = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE uid = ?
             `,
-            [nextStatus, currentUser.id, uid]
+            [
+                aiResult.score,
+                aiResult.summary,
+                aiResult.recommendation,
+                currentUser.id,
+                uid,
+            ]
         );
     } catch (error) {
-        throw createServiceError("Failed to update application status.", 500, error as Error);
+        throw createServiceError("Failed to save AI screening result.", 500, error as Error);
     }
 
     return {
-        message:
-            nextStatus === "shortlisted"
-                ? "Application approved and moved to shortlisted."
-                : "Application rejected successfully.",
-    };
-};
-
-
-const deleteApplication = async (
-    uid: string,
-    currentUser: AuthenticatedUser
-): Promise<ActionResult> => {
-    let application: ApplicationRow | undefined;
-
-    try {
-        application = await dbGet<ApplicationRow>(
-            "SELECT * FROM applications WHERE uid = ? AND created_by = ?",
-            [uid, currentUser.id]
-        );
-    } catch (error) {
-        throw createServiceError("Failed to fetch application.", 500, error as Error);
-    }
-
-    if (!application) {
-        throw createServiceError("Application not found.", 404);
-    }
-
-    if (application.status !== "draft") {
-        throw createServiceError("Only draft applications can be deleted.", 400);
-    }
-
-    try {
-        await dbRun("DELETE FROM applications WHERE uid = ?", [uid]);
-    } catch (error) {
-        throw createServiceError("Failed to delete application.", 500, error as Error);
-    }
-
-    return {
-        message: "Application deleted successfully.",
+        message: "AI screening completed successfully.",
+        screening: {
+            application_uid: uid,
+            ai_score: aiResult.score,
+            ai_summary: aiResult.summary,
+            ai_recommendation: aiResult.recommendation,
+        },
     };
 };
 
@@ -633,4 +767,5 @@ export default {
     getMyApplications,
     updateApplicationStatus,
     deleteApplication,
+    runApplicationAiScreening,
 };
