@@ -64,9 +64,32 @@ const getAllUsers = async (req: Request, res: Response) => {
     }
 };
 
+const deleteUser = async (req: Request<{ uid: string }>, res: Response) => {
+    if (!req.user) {
+        return res.status(401).json({
+            message: "Unauthorized. User information is missing.",
+        });
+    }
+
+    try {
+        const result = await authService.deleteUser(req.params.uid, req.user);
+        return res.status(200).json(result);
+    } catch (error) {
+        const serviceError = error as ServiceError;
+
+        return res.status(serviceError.status || 500).json({
+            message: serviceError.message || "Failed to delete user.",
+            ...(serviceError.originalError
+                ? { error: serviceError.originalError.message }
+                : {}),
+        });
+    }
+};
+
 export {
     registerUser,
     loginUser,
     getAuthenticatedUser,
     getAllUsers,
+    deleteUser,
 };
