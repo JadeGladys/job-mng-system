@@ -40,6 +40,8 @@ function RegisterPage({ onSwitchMode }: RegisterPageProps) {
                 phone_number: "",
                 password: "",
             });
+            onSwitchMode();
+
         } catch (err) {
             setError(err instanceof Error ? err.message : "Registration failed.");
         } finally {
