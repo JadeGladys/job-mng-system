@@ -6,6 +6,7 @@ import {
     extractTextFromRemoteFile,
 } from "./documentExtractionService";
 import aiScreeningService from "./aiScreeningService";
+import emailService from "./emailService";
 
 export type ApplicationFilters = {
     job_uid?: string;
@@ -385,6 +386,37 @@ const submitApplication = async (
         throw createServiceError("Failed to submit application.", 500, error as Error);
     }
 
+    //send an email once the applicaion has been submitted
+    let job: { title: string; company: string } | undefined;
+
+    try {
+        job = await dbGet<{ title: string; company: string }>(
+            "SELECT title, company FROM jobs WHERE id = ?",
+            [application.job_id]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch job details.", 500, error as Error);
+    }
+
+    if (!job) {
+        throw createServiceError("Related job not found.", 404);
+    }
+
+    try {
+        await emailService.sendApplicationSubmittedEmail(
+            currentUser.email,
+            currentUser.name,
+            job.title,
+            job.company
+        );
+    } catch (error) {
+        console.error(
+            "Failed to send application submitted email:",
+            (error as Error).message
+        );
+    }
+
+
     return {
         message: "Application submitted successfully.",
     };
@@ -432,6 +464,42 @@ const updateApplicationStatus = async (
     } catch (error) {
         throw createServiceError("Failed to update application status.", 500, error as Error);
     }
+
+    //send email after the admin updates the status
+
+    let job: { title: string; company: string } | undefined;
+
+    try {
+        job = await dbGet<{ title: string; company: string }>(
+            "SELECT title, company FROM jobs WHERE id = ?",
+            [application.job_id]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch job details.", 500, error as Error);
+    }
+
+    if (!job) {
+        throw createServiceError("Related job not found.", 404);
+    }
+
+
+    if (application.status === "rejected" || application.status === "shortlisted") {
+        try {
+            await emailService.sendApplicationStatusChangedEmail(
+                currentUser.email,
+                currentUser.name,
+                job.title,
+                job.company,
+                application.status
+            );
+        } catch (error) {
+            console.error(
+                "Failed to send application status update email:",
+                (error as Error).message
+            );
+        }
+    }
+
 
     return {
         message:
