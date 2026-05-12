@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import jwt from "jsonwebtoken";
 import db from "../config/database";
+import emailService from "./emailService";
 
 type ServiceError = Error & {
     status?: number;
@@ -189,6 +190,12 @@ const registerUser = async ({
         );
     } catch (error) {
         throw createServiceError("Failed to register user.", 500, error as Error);
+    }
+
+    try {
+        await emailService.sendWelcomeEmail(normalizedEmail, trimmedName);
+    } catch (error) {
+        console.error("Failed to send welcome email:", (error as Error).message);
     }
 
     return {
@@ -442,9 +449,16 @@ const updateUser = async (
     };
 };
 
-const deleteUser = async (userUid: string): Promise<{ message: string }> => {
+const deleteUser = async (
+    userUid: string,
+    currentUser: { uid: string }
+): Promise<{ message: string }> => {
     if (!userUid?.trim()) {
         throw createServiceError("User uid is required.", 400);
+    }
+
+    if (currentUser.uid !== userUid.trim()) {
+        throw createServiceError("You can only delete your own account.", 403);
     }
 
     let existingUser: ExistingUserByUidRow | undefined;
