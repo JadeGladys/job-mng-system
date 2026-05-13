@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import UserTaskbar from "../components/UserTaskbar";
 import { AppDispatch, RootState } from "../app/store";
 import { getJobs } from "../features/jobsSlice";
-import { createDraft, submitDraft } from "../features/applicationsSlice";
+import { createDraft, loadMyApplications, submitDraft } from "../features/applicationsSlice";
 
 const formatDate = (value?: string): string => {
     if (!value) {
@@ -32,6 +32,8 @@ function JobDetailsPage() {
     const loading = useSelector((state: RootState) => state.jobs.loading);
     const currentUser = useSelector((state: RootState) => state.auth.user);
     const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+    const myApplications = useSelector((state: RootState) => state.applications.items);
+
     const [cvLink, setCvLink] = useState("");
     const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -39,12 +41,57 @@ function JobDetailsPage() {
     const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
+        if (!errorMessage) {
+            return;
+        }
+        const timeoutId = window.setTimeout(() => {
+            setErrorMessage("");
+        }, 5000);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [errorMessage]);
+
+    useEffect(() => {
+        if (!successMessage) {
+            return;
+        }
+        const timeoutId = window.setTimeout(() => {
+            setSuccessMessage("");
+        }, 5000);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [successMessage]);
+
+    useEffect(() => {
         if (jobs.length === 0) {
             dispatch(getJobs({}));
         }
     }, [dispatch, jobs.length]);
 
+    useEffect(() => {
+        if (isAuthenticated && currentUser?.role === "user") {
+            dispatch(loadMyApplications({}));
+        }
+    }, [dispatch, isAuthenticated, currentUser?.role]);
+
     const job = jobs.find((item) => item.uid === uid);
+
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const deadlineDate = job?.deadline ? new Date(job.deadline) : null;
+    const deadlineOnly = deadlineDate
+        ? new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate())
+        : null;
+
+    const deadlinePassed =
+        deadlineOnly !== null && !Number.isNaN(deadlineOnly.getTime())
+            ? deadlineOnly < todayOnly
+            : false;
+
+    const alreadyApplied = myApplications.some(
+        (application) => application.job_uid === uid
+    );
 
     const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
         setCoverLetterFile(event.target.files?.[0] ?? null);
@@ -82,7 +129,13 @@ function JobDetailsPage() {
             const result = await dispatch(createDraft(buildApplicationPayload())).unwrap();
             setSuccessMessage(result.message);
         } catch (error) {
-            setErrorMessage(error instanceof Error ? error.message : "Failed to create draft.");
+            setErrorMessage(
+                typeof error === "string"
+                    ? error
+                    : error instanceof Error
+                        ? error.message
+                        : "Failed to create draft."
+            );
         } finally {
             setSubmitting(false);
         }
@@ -116,7 +169,13 @@ function JobDetailsPage() {
             ).unwrap();
             setSuccessMessage(result.message);
         } catch (error) {
-            setErrorMessage(error instanceof Error ? error.message : "Failed to submit application.");
+            setErrorMessage(
+                typeof error === "string"
+                    ? error
+                    : error instanceof Error
+                        ? error.message
+                        : "Failed to create draft."
+            );
         } finally {
             setSubmitting(false);
         }
@@ -146,7 +205,6 @@ function JobDetailsPage() {
                     <span className="jobs-brand-mark" />
                     <div>
                         <strong>Job MNG System</strong>
-                        <span>Role details and application workspace.</span>
                     </div>
                 </div>
 
@@ -187,6 +245,116 @@ function JobDetailsPage() {
                 </article>
 
                 <aside className="job-detail-sidebar">
+                    <div className="job-application-card">
+                        <h2>Apply for this role</h2>
+
+                        {currentUser?.role === "admin" ? (
+                            <div className="job-application-blocked">
+                                <p className="job-application-blocked-title">You are an Admin</p>
+                                <p className="job-application-blocked-copy">
+                                    Applications are only available to regular users.
+                                </p>
+                            </div>
+                        ) : deadlinePassed ? (
+                            <div className="job-application-blocked is-warning">
+                                <p className="job-application-blocked-title">Applications closed</p>
+                                <p className="job-application-blocked-copy">
+                                    This job is no longer accepting applications because the deadline has passed.
+                                </p>
+                            </div>
+                        ) : alreadyApplied ? (
+                            <div className="job-application-blocked is-info">
+                                <p className="job-application-blocked-title">Application already submitted</p>
+                                <p className="job-application-blocked-copy">
+                                    You have already applied to this job.
+                                </p>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleDraft}>
+                                <p>
+                                    Upload your cover letter, add your CV link, then either save a draft or
+                                    submit right away.
+                                </p>
+
+                                <label className="job-application-field">
+                                    <span>CV link</span>
+                                    <input
+                                        type="url"
+                                        placeholder="https://your-cv-link.com"
+                                        value={cvLink}
+                                        onChange={(event) => setCvLink(event.target.value)}
+                                        required
+                                    />
+                                </label>
+
+                                <label className="job-application-field">
+                                    <span>Cover letter file</span>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.doc,.docx"
+                                        onChange={handleFileChange}
+                                        required
+                                    />
+                                </label>
+
+                                {coverLetterFile ? (
+                                    <p className="job-application-note">
+                                        Selected file: <strong>{coverLetterFile.name}</strong>
+                                    </p>
+                                ) : null}
+
+                                {errorMessage ? (
+                                    <div className="form-alert form-alert-error" role="alert">
+                                        <div className="form-alert-icon">⊘</div>
+                                        <span>{errorMessage}</span>
+                                        <button
+                                            type="button"
+                                            className="form-alert-close"
+                                            onClick={() => setErrorMessage("")}
+                                            aria-label="Dismiss error"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ) : null}
+
+                                {successMessage ? (
+                                    <div className="form-alert form-alert-success" role="alert">
+                                        <div className="form-alert-icon">⊘</div>
+                                        <span>{successMessage}</span>
+                                        <button
+                                            type="button"
+                                            className="form-alert-close"
+                                            onClick={() => setErrorMessage("")}
+                                            aria-label="Dismiss error"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ) : null}
+
+                                <div className="job-application-actions">
+                                    <button
+                                        type="submit"
+                                        className="jobs-secondary-button job-application-draft"
+                                        disabled={submitting}
+                                    >
+                                        {submitting ? "Saving..." : "Create draft"}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="jobs-primary-button"
+                                        disabled={submitting}
+                                        onClick={handleApply}
+                                    >
+                                        {submitting ? "Submitting..." : "Apply now"}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+
                     <div className="job-detail-summary-card">
                         <h2>Summary</h2>
                         <div className="job-detail-summary-list">
@@ -213,68 +381,6 @@ function JobDetailsPage() {
                         </div>
                     </div>
 
-                    <form className="job-application-card" onSubmit={handleDraft}>
-                        <h2>Apply for this role</h2>
-                        <p>
-                            Upload your cover letter, add your CV link, then either save a draft or
-                            submit right away.
-                        </p>
-
-                        <label className="job-application-field">
-                            <span>CV link</span>
-                            <input
-                                type="url"
-                                placeholder="https://your-cv-link.com"
-                                value={cvLink}
-                                onChange={(event) => setCvLink(event.target.value)}
-                                required
-                            />
-                        </label>
-
-                        <label className="job-application-field">
-                            <span>Cover letter file</span>
-                            <input
-                                type="file"
-                                accept=".pdf,.doc,.docx"
-                                onChange={handleFileChange}
-                                required
-                            />
-                        </label>
-
-                        {coverLetterFile ? (
-                            <p className="job-application-note">
-                                Selected file: <strong>{coverLetterFile.name}</strong>
-                            </p>
-                        ) : null}
-
-                        {currentUser?.role === "admin" ? (
-                            <p className="jobs-error">
-                                Applications are only available to regular users.
-                            </p>
-                        ) : null}
-
-                        {errorMessage ? <p className="jobs-error">{errorMessage}</p> : null}
-                        {successMessage ? <p className="job-application-success">{successMessage}</p> : null}
-
-                        <div className="job-application-actions">
-                            <button
-                                type="submit"
-                                className="jobs-secondary-button job-application-draft"
-                                disabled={submitting || currentUser?.role === "admin"}
-                            >
-                                {submitting ? "Saving..." : "Create draft"}
-                            </button>
-
-                            <button
-                                type="button"
-                                className="jobs-primary-button"
-                                disabled={submitting || currentUser?.role === "admin"}
-                                onClick={handleApply}
-                            >
-                                {submitting ? "Submitting..." : "Apply now"}
-                            </button>
-                        </div>
-                    </form>
                 </aside>
             </section>
         </div>
