@@ -68,6 +68,7 @@ type ApplicationUpdateInput = {
 type JobRow = {
     id: number;
     uid: string;
+    deadline: string;
 };
 
 type ApplicationRow = {
@@ -196,13 +197,30 @@ const createApplication = async (
     let job: JobRow | undefined;
 
     try {
-        job = await dbGet<JobRow>("SELECT id, uid FROM jobs WHERE uid = ?", [normalizedJobUid]);
+        job = await dbGet<JobRow>("SELECT id, uid, deadline FROM jobs WHERE uid = ?", [normalizedJobUid]);
     } catch (error) {
         throw createServiceError("Failed to validate the selected job.", 500, error as Error);
     }
 
     if (!job) {
         throw createServiceError("Job not found.", 404);
+    }
+
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const jobDeadline = new Date(job.deadline);
+    const deadlineOnly = new Date(
+        jobDeadline.getFullYear(),
+        jobDeadline.getMonth(),
+        jobDeadline.getDate()
+    );
+
+    if (Number.isNaN(jobDeadline.getTime())) {
+        throw createServiceError("Job deadline is invalid.", 500);
+    }
+
+    if (deadlineOnly < todayOnly) {
+        throw createServiceError("The deadline for this job has already passed.", 400);
     }
 
     let existingApplication: ExistingApplicationRow | undefined;
