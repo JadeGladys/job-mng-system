@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import {
     buildApplicationStatusChangedEmail,
     buildApplicationSubmittedEmail,
@@ -6,13 +6,20 @@ import {
 } from "./emailTemplates";
 
 const getEmailConfig = () => {
-    const resendApiKey = process.env.RESEND_API_KEY || "";
-    const emailFrom = process.env.EMAIL_FROM || "";
+    const smtpHost = process.env.SMTP_HOST || "";
+    const smtpPort = Number(process.env.SMTP_PORT || "587");
+    const smtpUser = process.env.SMTP_USER || "";
+    const smtpPass = process.env.SMTP_PASS || "";
+    const emailFrom = process.env.EMAIL_FROM || smtpUser;
+    const secure = process.env.SMTP_SECURE === "true";
 
     return {
-        resendApiKey,
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpPass,
+        secure,
         emailFrom,
-        resend: resendApiKey ? new Resend(resendApiKey) : null,
     };
 };
 
@@ -21,10 +28,10 @@ const sendEmail = async (
     subject: string,
     html: string
 ): Promise<void> => {
-    const { resend, emailFrom } = getEmailConfig();
+    const { smtpHost, smtpPort, smtpUser, smtpPass, secure, emailFrom } = getEmailConfig();
 
-    if (!resend) {
-        console.warn("Email skipped: RESEND_API_KEY is missing.");
+    if (!smtpHost || !smtpUser || !smtpPass) {
+        console.warn("Email skipped: SMTP configuration is incomplete.");
         return;
     }
 
@@ -33,7 +40,17 @@ const sendEmail = async (
         return;
     }
 
-    await resend.emails.send({
+    const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure,
+        auth: {
+            user: smtpUser,
+            pass: smtpPass,
+        },
+    });
+
+    await transporter.sendMail({
         from: emailFrom,
         to,
         subject,
