@@ -524,20 +524,51 @@ button {
   background: rgba(47, 94, 166, 0.08);
 }
 
-.jobs-empty-state,
-.jobs-error {
-  border-radius: 24px;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(47, 94, 166, 0.09);
-  color: var(--text-secondary);
-}
-
-.jobs-error {
-  color: var(--error);
-}
-
 /* User Pages: Job Details */
+
+.form-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.form-alert-error {
+  box-shadow: 0 10px 24px rgba(155, 28, 28, 0.08);
+  border: 1px solid #efb4b4;
+  background: #fde8e8;
+  color: #9b1c1c;
+}
+
+.form-alert-success {
+  box-shadow: 0 10px 24px rgba(28, 155, 43, 0.08);
+  border: 1px solid #b4efb7;
+  background: #e8fde9;
+  color: #1c9b2b;
+}
+
+.form-alert-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.form-alert-close {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: #9b1c1c;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.form-alert-success .form-alert-close {
+  color: #1c9b2b;
+}
+
 .jobs-detail-page,
 .jobs-applications-page {
   display: grid;
@@ -582,8 +613,7 @@ button {
 }
 
 .job-detail-intro,
-.job-detail-section p,
-.job-application-card p {
+.job-detail-section p {
   color: var(--text-secondary);
 }
 
@@ -625,12 +655,21 @@ button {
 
 .job-application-card {
   display: grid;
-  gap: 14px;
+  gap: 2px;
+  background: #2f5fa67d;
+}
+
+.job-application-card p,
+.job-application-field input,
+.job-application-field select,
+.job-application-field span {
+  color: var(--text-primary);
 }
 
 .job-application-field {
   display: flex;
   flex-direction: column;
+  margin-bottom: 15px;
 }
 
 .job-application-field input,
@@ -640,6 +679,7 @@ button {
   border-radius: 16px;
   border: 1px solid rgba(47, 94, 166, 0.12);
   background: rgba(255, 255, 255, 0.96);
+  color: var(--text-primary);
 }
 
 .job-application-note,
@@ -656,10 +696,45 @@ button {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: 20px;
 }
 
 .job-application-draft {
   background: rgba(47, 94, 166, 0.08);
+}
+
+.job-application-blocked {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(47, 94, 166, 0.14);
+  background: linear-gradient(180deg, rgba(238, 244, 255, 0.96) 0%, rgba(225, 236, 252, 0.92) 100%);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.job-application-blocked.is-warning {
+  border-color: rgba(191, 90, 36, 0.22);
+  background: linear-gradient(180deg, rgba(255, 244, 235, 0.96) 0%, rgba(252, 235, 222, 0.92) 100%);
+}
+
+.job-application-blocked.is-info {
+  border-color: rgba(47, 94, 166, 0.16);
+  background: linear-gradient(180deg, rgba(238, 244, 255, 0.96) 0%, rgba(225, 236, 252, 0.92) 100%);
+}
+
+.job-application-blocked-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.job-application-blocked-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 /* User Pages: My Applications */

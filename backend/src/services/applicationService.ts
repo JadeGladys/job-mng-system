@@ -68,6 +68,7 @@ type ApplicationUpdateInput = {
 type JobRow = {
     id: number;
     uid: string;
+    deadline: string;
 };
 
 type ApplicationRow = {
@@ -78,6 +79,11 @@ type ApplicationRow = {
     cv_link: string;
     status: "draft" | "pending" | "rejected" | "shortlisted";
     created_by: number;
+};
+
+type ApplicantRow = {
+    name: string;
+    email: string;
 };
 
 type ExistingApplicationRow = {
@@ -196,13 +202,30 @@ const createApplication = async (
     let job: JobRow | undefined;
 
     try {
-        job = await dbGet<JobRow>("SELECT id, uid FROM jobs WHERE uid = ?", [normalizedJobUid]);
+        job = await dbGet<JobRow>("SELECT id, uid, deadline FROM jobs WHERE uid = ?", [normalizedJobUid]);
     } catch (error) {
         throw createServiceError("Failed to validate the selected job.", 500, error as Error);
     }
 
     if (!job) {
         throw createServiceError("Job not found.", 404);
+    }
+
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const jobDeadline = new Date(job.deadline);
+    const deadlineOnly = new Date(
+        jobDeadline.getFullYear(),
+        jobDeadline.getMonth(),
+        jobDeadline.getDate()
+    );
+
+    if (Number.isNaN(jobDeadline.getTime())) {
+        throw createServiceError("Job deadline is invalid.", 500);
+    }
+
+    if (deadlineOnly < todayOnly) {
+        throw createServiceError("The deadline for this job has already passed.", 400);
     }
 
     let existingApplication: ExistingApplicationRow | undefined;
@@ -482,22 +505,34 @@ const updateApplicationStatus = async (
         throw createServiceError("Related job not found.", 404);
     }
 
+    let applicant: ApplicantRow | undefined;
 
-    if (application.status === "rejected" || application.status === "shortlisted") {
-        try {
-            await emailService.sendApplicationStatusChangedEmail(
-                currentUser.email,
-                currentUser.name,
-                job.title,
-                job.company,
-                application.status
-            );
-        } catch (error) {
-            console.error(
-                "Failed to send application status update email:",
-                (error as Error).message
-            );
-        }
+    try {
+        applicant = await dbGet<ApplicantRow>(
+            "SELECT name, email FROM users WHERE id = ?",
+            [application.created_by]
+        );
+    } catch (error) {
+        throw createServiceError("Failed to fetch applicant details.", 500, error as Error);
+    }
+
+    if (!applicant) {
+        throw createServiceError("Applicant not found.", 404);
+    }
+
+    try {
+        await emailService.sendApplicationStatusChangedEmail(
+            applicant.email,
+            applicant.name,
+            job.title,
+            job.company,
+            nextStatus
+        );
+    } catch (error) {
+        console.error(
+            "Failed to send application status update email:",
+            (error as Error).message
+        );
     }
 
 
